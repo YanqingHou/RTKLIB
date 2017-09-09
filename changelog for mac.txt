@@ -1,0 +1,6 @@
+rtklib in mac
+1. when compile rnx2rtkp in mac (Xcode, Clion, gcc, or whatever)，it says "cant find -lrt library". 
+Just remove the argument -lrt in the makefile. In clang(mac), runtime lib is not explicitly needed, while in Linux it is needed.
+
+2. After successful complilation, run rnx2rtkp, it will show an error: Segmental fault 11. The solution is to change in the 
+first line of rtkcmn.c as follows: change "#define _POSIX_C_SOURCE 199309" to "#define _POSIX_C_SOURCE 199506"
