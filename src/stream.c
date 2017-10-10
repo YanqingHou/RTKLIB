@@ -1887,7 +1887,7 @@ extern void strclose(stream_t *stream)
         }
     }
     else {
-        trace(2,"no port to close stream: type=%d\n",stream->type);
+        RTKtrace(2,"no port to close stream: type=%d\n",stream->type);
     }
     stream->type=0;
     stream->mode=0;
@@ -2174,7 +2174,7 @@ static int gen_hex(const char *msg, unsigned char *buff)
     unsigned int byte;
     int i,narg=0;
     
-    trace(4,"gen_hex: msg=%s\n",msg);
+    RTKtrace(4,"gen_hex: msg=%s\n",msg);
     
     strncpy(mbuff,msg,1023);
     for (p=strtok(mbuff," ");p&&narg<256;p=strtok(NULL," ")) {

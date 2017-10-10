@@ -116,7 +116,7 @@ static int decode_stqtime(raw_t *raw)
     double tow;
     int week;
     
-    trace(4,"decode_stqtime: len=%d\n",raw->len);
+    RTKtrace(4,"decode_stqtime: len=%d\n",raw->len);
     
     raw->iod=U1(p+1);
     week    =U2(p+2);
@@ -131,16 +131,16 @@ static int decode_stqraw(raw_t *raw)
     double pr1,cp1;
     int i,j,iod,prn,sys,sat,n=0,nsat;
     
-    trace(4,"decode_stqraw: len=%d\n",raw->len);
+    RTKtrace(4,"decode_stqraw: len=%d\n",raw->len);
     
     iod=U1(p+1);
     if (iod!=raw->iod) {
-        trace(2,"stq raw iod error: iod=%d %d\n",iod,raw->iod);
+        RTKtrace(2,"stq raw iod error: iod=%d %d\n",iod,raw->iod);
         return -1;
     }
     nsat=U1(p+2);
     if (raw->len<8+23*nsat) {
-        trace(2,"stq raw length error: len=%d nsat=%d\n",raw->len,nsat);
+        RTKtrace(2,"stq raw length error: len=%d nsat=%d\n",raw->len,nsat);
         return -1;
     }
     for (i=0,p+=3;i<nsat&&i<MAXOBS;i++,p+=23) {
@@ -161,11 +161,11 @@ static int decode_stqraw(raw_t *raw)
             prn-=200;
         }
         else {
-            trace(2,"stq raw satellite number error: prn=%d\n",prn);
+            RTKtrace(2,"stq raw satellite number error: prn=%d\n",prn);
             continue;
         }
         if (!(sat=satno(sys,prn))) {
-            trace(2,"stq raw satellite number error: sys=%d prn=%d\n",sys,prn);
+            RTKtrace(2,"stq raw satellite number error: sys=%d prn=%d\n",sys,prn);
             continue;
         }
         ind=U1(p+22);
@@ -210,18 +210,18 @@ static int save_subfrm(int sat, raw_t *raw)
     unsigned char *p=raw->buff+7,*q;
     int i,id;
     
-    trace(4,"save_subfrm: sat=%2d\n",sat);
+    RTKtrace(4,"save_subfrm: sat=%2d\n",sat);
     
     /* check navigation subframe preamble */
     if (p[0]!=0x8B) {
-        trace(2,"stq subframe preamble error: 0x%02X\n",p[0]);
+        RTKtrace(2,"stq subframe preamble error: 0x%02X\n",p[0]);
         return 0;
     }
     id=(p[5]>>2)&0x7;
     
     /* check subframe id */
     if (id<1||5<id) {
-        trace(2,"stq subframe id error: id=%d\n",id);
+        RTKtrace(2,"stq subframe id error: id=%d\n",id);
         return 0;
     }
     q=raw->subfrm[sat-1]+(id-1)*30;
@@ -235,7 +235,7 @@ static int decode_ephem(int sat, raw_t *raw)
 {
     eph_t eph={0};
     
-    trace(4,"decode_ephem: sat=%2d\n",sat);
+    RTKtrace(4,"decode_ephem: sat=%2d\n",sat);
     
     if (decode_frame(raw->subfrm[sat-1]   ,&eph,NULL,NULL,NULL,NULL)!=1||
         decode_frame(raw->subfrm[sat-1]+30,&eph,NULL,NULL,NULL,NULL)!=2||
@@ -255,7 +255,7 @@ static int decode_alm1(int sat, raw_t *raw)
 {
     int sys=satsys(sat,NULL);
     
-    trace(4,"decode_alm1 : sat=%2d\n",sat);
+    RTKtrace(4,"decode_alm1 : sat=%2d\n",sat);
     
     if (sys==SYS_GPS) {
         decode_frame(raw->subfrm[sat-1]+90,NULL,raw->nav.alm,raw->nav.ion_gps,
@@ -274,7 +274,7 @@ static int decode_alm2(int sat, raw_t *raw)
 {
     int sys=satsys(sat,NULL);
     
-    trace(4,"decode_alm2 : sat=%2d\n",sat);
+    RTKtrace(4,"decode_alm2 : sat=%2d\n",sat);
     
     if (sys==SYS_GPS) {
         decode_frame(raw->subfrm[sat-1]+120,NULL,raw->nav.alm,NULL,NULL,NULL);
@@ -292,15 +292,15 @@ static int decode_stqgps(raw_t *raw)
     int prn,sat,id;
     unsigned char *p=raw->buff+4;
     
-    trace(4,"decode_stqgps: len=%d\n",raw->len);
+    RTKtrace(4,"decode_stqgps: len=%d\n",raw->len);
     
     if (raw->len<40) {
-        trace(2,"stq gps/qzss subframe length error: len=%d\n",raw->len);
+        RTKtrace(2,"stq gps/qzss subframe length error: len=%d\n",raw->len);
         return -1;
     }
     prn=U1(p+1);
     if (!(sat=satno(MINPRNQZS<=prn&&prn<=MAXPRNQZS?SYS_QZS:SYS_GPS,prn))) {
-        trace(2,"stq gps/qzss subframe satellite number error: prn=%d\n",prn);
+        RTKtrace(2,"stq gps/qzss subframe satellite number error: prn=%d\n",prn);
         return -1;
     }
     id=save_subfrm(sat,raw);
@@ -316,20 +316,20 @@ static int decode_stqglo(raw_t *raw)
     int i,prn,sat,m;
     unsigned char *p=raw->buff+4;
     
-    trace(4,"decode_stqglo: len=%d\n",raw->len);
+    RTKtrace(4,"decode_stqglo: len=%d\n",raw->len);
     
     if (raw->len<19) {
-        trace(2,"stq glo string length error: len=%d\n",raw->len);
+        RTKtrace(2,"stq glo string length error: len=%d\n",raw->len);
         return -1;
     }
     prn=U1(p+1)-64;
     if (!(sat=satno(SYS_GLO,prn))) {
-        trace(2,"stq glo string satellite number error: prn=%d\n",prn);
+        RTKtrace(2,"stq glo string satellite number error: prn=%d\n",prn);
         return -1;
     }
     m=U1(p+2); /* string number */
     if (m<1||4<m) {
-        trace(2,"stq glo string number error: prn=%d m=%d\n",prn,m);
+        RTKtrace(2,"stq glo string number error: prn=%d m=%d\n",prn,m);
         return -1;
     }
     setbitu(raw->subfrm[sat-1]+(m-1)*10,1,4,m);
@@ -358,15 +358,15 @@ static int decode_stqgloe(raw_t *raw)
     int prn,sat;
     unsigned char *p=raw->buff+4;
     
-    trace(4,"decode_stqgloe: len=%d\n",raw->len);
+    RTKtrace(4,"decode_stqgloe: len=%d\n",raw->len);
     
     if (raw->len<50) {
-        trace(2,"stq glo string length error: len=%d\n",raw->len);
+        RTKtrace(2,"stq glo string length error: len=%d\n",raw->len);
         return -1;
     }
     prn=U1(p+1);
     if (!(sat=satno(SYS_GLO,prn))) {
-        trace(2,"stq gloe string satellite number error: prn=%d\n",prn);
+        RTKtrace(2,"stq gloe string satellite number error: prn=%d\n",prn);
         return -1;
     }
     /* only set frequency channel number */
@@ -382,20 +382,20 @@ static int decode_stqbds(raw_t *raw)
     int i,j=0,id,pgn,prn,sat;
     unsigned char *p=raw->buff+4;
     
-    trace(4,"decode_stqbds: len=%d\n",raw->len);
+    RTKtrace(4,"decode_stqbds: len=%d\n",raw->len);
     
     if (raw->len<38) {
-        trace(2,"stq bds subframe length error: len=%d\n",raw->len);
+        RTKtrace(2,"stq bds subframe length error: len=%d\n",raw->len);
         return -1;
     }
     prn=U1(p+1)-200;
     if (!(sat=satno(SYS_CMP,prn))) {
-        trace(2,"stq bds subframe satellite number error: prn=%d\n",prn);
+        RTKtrace(2,"stq bds subframe satellite number error: prn=%d\n",prn);
         return -1;
     }
     id=U1(p+2); /* subframe id */
     if (id<1||5<id) {
-        trace(2,"stq bds subframe id error: prn=%2d\n",prn);
+        RTKtrace(2,"stq bds subframe id error: prn=%2d\n",prn);
         return -1;
     }
     if (prn>=5) { /* IGSO/MEO */
@@ -416,7 +416,7 @@ static int decode_stqbds(raw_t *raw)
         
         pgn=getbitu(p+3,26+12,4); /* page number */
         if (pgn<1||10<pgn) {
-            trace(2,"stq bds subframe page number error: prn=%2d\n",prn);
+            RTKtrace(2,"stq bds subframe page number error: prn=%2d\n",prn);
             return -1;
         }
         word=getbitu(p+3,j,26)<<4; j+=26;
@@ -445,13 +445,13 @@ static int decode_stq(raw_t *raw)
     int type=U1(raw->buff+4);
     unsigned char cs,*p=raw->buff+raw->len-3;
     
-    trace(3,"decode_stq: type=%02x len=%d\n",type,raw->len);
+    RTKtrace(3,"decode_stq: type=%02x len=%d\n",type,raw->len);
     
     /* checksum */
     cs=checksum(raw->buff,raw->len);
     
     if (cs!=*p||*(p+1)!=0x0D||*(p+2)!=0x0A) {
-        trace(2,"stq checksum error: type=%02X cs=%02X tail=%02X%02X%02X\n",
+        RTKtrace(2,"stq checksum error: type=%02X cs=%02X tail=%02X%02X%02X\n",
               type,cs,*p,*(p+1),*(p+2));
         return -1;
     }
@@ -491,7 +491,7 @@ static int sync_stq(unsigned char *buff, unsigned char data)
 *-----------------------------------------------------------------------------*/
 extern int input_stq(raw_t *raw, unsigned char data)
 {
-    trace(5,"input_stq: data=%02x\n",data);
+    RTKtrace(5,"input_stq: data=%02x\n",data);
     
     /* synchronize frame */
     if (raw->nbyte==0) {
@@ -503,7 +503,7 @@ extern int input_stq(raw_t *raw, unsigned char data)
     
     if (raw->nbyte==4) {
         if ((raw->len=U2(raw->buff+2)+7)>MAXRAWLEN) {
-            trace(2,"stq message length error: len=%d\n",raw->len);
+            RTKtrace(2,"stq message length error: len=%d\n",raw->len);
             raw->nbyte=0;
             return -1;
         }
@@ -524,7 +524,7 @@ extern int input_stqf(raw_t *raw, FILE *fp)
 {
     int i,data;
     
-    trace(4,"input_stqf:\n");
+    RTKtrace(4,"input_stqf:\n");
     
     /* synchronize frame */
     if (raw->nbyte==0) {
@@ -538,7 +538,7 @@ extern int input_stqf(raw_t *raw, FILE *fp)
     raw->nbyte=4;
     
     if ((raw->len=U2(raw->buff+2)+7)>MAXRAWLEN) {
-        trace(2,"stq message length error: len=%d\n",raw->len);
+        RTKtrace(2,"stq message length error: len=%d\n",raw->len);
         raw->nbyte=0;
         return -1;
     }
@@ -568,7 +568,7 @@ extern int gen_stq(const char *msg, unsigned char *buff)
     char mbuff[1024],*args[32],*p;
     int i,n,narg=0;
     
-    trace(4,"gen_stq: msg=%s\n",msg);
+    RTKtrace(4,"gen_stq: msg=%s\n",msg);
     
     strcpy(mbuff,msg);
     for (p=strtok(mbuff," ");p&&narg<32;p=strtok(NULL," ")) {

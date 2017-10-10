@@ -1,11 +1,11 @@
 /*------------------------------------------------------------------------------
 * rtkcmn.c : rtklib common functions
 *
-*          Copyright (C) 2007-2015 by T.TAKASU, All rights reserved.
+*          Copyright (C) 2007-2013 by T.TAKASU, All rights reserved.
 *
 * options : -DLAPACK   use LAPACK/BLAS
 *           -DMKL      use Intel MKL
-*           -DTRACE    enable debug trace
+*           -DTRACE    enable debug RTKtrace
 *           -DWIN32    use WIN32 API
 *           -DNOCALLOC no use calloc for zero matrix
 *           -DIERS_MODEL use GMF instead of NMF
@@ -38,7 +38,7 @@
 * version : $Revision: 1.1 $ $Date: 2008/07/17 21:48:06 $
 * history : 2007/01/12 1.0 new
 *           2007/03/06 1.1 input initial rover pos of pntpos()
-*                          update only effective states of filter()
+*                          update only effective states of RTKfilter()
 *                          fix bug of atan2() domain error
 *           2007/04/11 1.2 add function antmodel()
 *                          add gdop mask for pntpos()
@@ -99,12 +99,9 @@
 *                           support BDS L1 in satwavelen()
 *           2014/05/29 1.27 fix bug on obs2code() to search obs code table
 *           2014/08/26 1.28 fix problem on output of uncompress() for tar file
-*                           add function to swap trace file with keywords
+*                           add function to swap RTKtrace file with keywords
 *           2014/10/21 1.29 strtok() -> strtok_r() in expath() for thread-safe
 *                           add bdsmodear in procopt_default
-*           2015/03/19 1.30 fix bug on interpolation of erp values in geterp()
-*                           add leap second insertion before 2015/07/01 00:00
-*                           add api read_leaps()
 *-----------------------------------------------------------------------------*/
 #define _POSIX_C_SOURCE 199309
 #include <stdarg.h>
@@ -129,8 +126,7 @@ const static double gpst0[]={1980,1, 6,0,0,0}; /* gps time reference */
 const static double gst0 []={1999,8,22,0,0,0}; /* galileo system time reference */
 const static double bdt0 []={2006,1, 1,0,0,0}; /* beidou time reference */
 
-static double leaps[MAXLEAPS+1][7]={ /* leap seconds (y,m,d,h,m,s,utc-gpst) */
-    {2015,7,1,0,0,0,-17},
+const static double leaps[][7]={ /* leap seconds {y,m,d,h,m,s,utc-gpst,...} */
     {2012,7,1,0,0,0,-16},
     {2009,1,1,0,0,0,-15},
     {2006,1,1,0,0,0,-14},
@@ -146,8 +142,7 @@ static double leaps[MAXLEAPS+1][7]={ /* leap seconds (y,m,d,h,m,s,utc-gpst) */
     {1985,7,1,0,0,0, -4},
     {1983,7,1,0,0,0, -3},
     {1982,7,1,0,0,0, -2},
-    {1981,7,1,0,0,0, -1},
-    {0}
+    {1981,7,1,0,0,0, -1}
 };
 const double chisqr[100]={      /* chi-sqr(n) (alpha=0.001) */
     10.8,13.8,16.3,18.5,20.5,22.5,24.3,26.1,27.9,29.6,
@@ -187,7 +182,7 @@ const prcopt_t prcopt_default={ /* defaults processing options */
 const solopt_t solopt_default={ /* defaults solution output options */
     SOLF_LLH,TIMES_GPST,1,3,    /* posf,times,timef,timeu */
     0,1,0,0,0,0,                /* degf,outhead,outopt,datum,height,geoid */
-    0,0,0,                      /* solstatic,sstat,trace */
+    0,0,0,                      /* solstatic,sstat,RTKtrace */
     {0.0,0.0},                  /* nmeaintv */
     " ",""                      /* separator/program name */
 };
@@ -479,7 +474,7 @@ extern int satexclude(int sat, int svh, const prcopt_t *opt)
     }
     if (sys==SYS_QZS) svh&=0xFE; /* mask QZSS LEX health */
     if (svh) {
-        trace(3,"unhealthy satellite: sat=%3d svh=%02X\n",sat,svh);
+        RTKtrace(3,"unhealthy satellite: sat=%3d svh=%02X\n",sat,svh);
         return 1;
     }
     return 0;
@@ -553,7 +548,7 @@ extern char *code2obs(unsigned char code, int *freq)
 *-----------------------------------------------------------------------------*/
 extern void setcodepri(int sys, int freq, const char *pri)
 {
-    trace(3,"setcodepri:sys=%d freq=%d pri=%s\n",sys,freq,pri);
+    RTKtrace(3,"setcodepri:sys=%d freq=%d pri=%s\n",sys,freq,pri);
     
     if (freq<=0||MAXFREQ<freq) return;
     if (sys&SYS_GPS) strcpy(codepris[0][freq-1],pri);
@@ -649,7 +644,7 @@ extern unsigned int crc32(const unsigned char *buff, int len)
     unsigned int crc=0;
     int i,j;
     
-    trace(4,"crc32: len=%d\n",len);
+    RTKtrace(4,"crc32: len=%d\n",len);
     
     for (i=0;i<len;i++) {
         crc^=buff[i];
@@ -671,7 +666,7 @@ extern unsigned int crc24q(const unsigned char *buff, int len)
     unsigned int crc=0;
     int i;
     
-    trace(4,"crc24q: len=%d\n",len);
+    RTKtrace(4,"crc24q: len=%d\n",len);
     
     for (i=0;i<len;i++) crc=((crc<<8)&0xFFFFFF)^tbl_CRC24Q[(crc>>16)^buff[i]];
     return crc;
@@ -688,7 +683,7 @@ extern unsigned short crc16(const unsigned char *buff, int len)
     unsigned short crc=0;
     int i;
     
-    trace(4,"crc16: len=%d\n",len);
+    RTKtrace(4,"crc16: len=%d\n",len);
     
     for (i=0;i<len;i++) {
         crc=(crc<<8)^tbl_CRC16[((crc>>8)^buff[i])&0xFF];
@@ -712,7 +707,7 @@ extern int decode_word(unsigned int word, unsigned char *data)
     unsigned int parity=0,w;
     int i;
     
-    trace(5,"decodeword: word=%08x\n",word);
+    RTKtrace(5,"decodeword: word=%08x\n",word);
     
     if (word&0x40000000) word^=0x3FFFFFC0;
     
@@ -762,17 +757,17 @@ extern int *imat(int n, int m)
 *-----------------------------------------------------------------------------*/
 extern double *zeros(int n, int m)
 {
-    double *p;
-    
+	double *p;
+
 #if NOCALLOC
-    if ((p=mat(n,m))) for (n=n*m-1;n>=0;n--) p[n]=0.0;
+	if ((p=mat(n,m))) for (n=n*m-1;n>=0;n--) p[n]=0.0;
 #else
-    if (n<=0||m<=0) return NULL;
-    if (!(p=(double *)calloc(sizeof(double),n*m))) {
-        fatalerr("matrix memory allocation error: n=%d,m=%d\n",n,m);
-    }
+	if (n<=0||m<=0) return NULL;
+	if (!(p=(double *)calloc(sizeof(double),n*m))) {
+		fatalerr("matrix memory allocation error: n=%d,m=%d\n",n,m);
+	}
 #endif
-    return p;
+	return p;
 }
 /* identity matrix -------------------------------------------------------------
 * generate new identity matrix
@@ -915,6 +910,7 @@ extern int solve(const char *tr, const double *A, const double *Y, int n,
 #else /* without LAPACK/BLAS or MKL */
 
 /* multiply matrix -----------------------------------------------------------*/
+/*n--output row dim; k--output column dim, m--intermediate dim*/
 extern void matmul(const char *tr, int n, int k, int m, double alpha,
                    const double *A, const double *B, double beta, double *C)
 {
@@ -1037,8 +1033,8 @@ extern int lsq(const double *A, const double *y, int n, int m, double *x,
     free(Ay);
     return info;
 }
-/* kalman filter ---------------------------------------------------------------
-* kalman filter state update as follows:
+/* kalman RTKfilter ---------------------------------------------------------------
+* kalman RTKfilter state update as follows:
 *
 *   K=P*H*(H'*P*H+R)^-1, xp=x+K*v, Pp=(I-K*H')*P
 *
@@ -1062,9 +1058,13 @@ static int filter_(const double *x, const double *P, const double *H,
     int info;
     
     matcpy(Q,R,m,m);
-    matcpy(xp,x,n,1);
-    matmul("NN",n,m,n,1.0,P,H,0.0,F);       /* Q=H'*P*H+R */
-    matmul("TN",m,m,n,1.0,H,F,1.0,Q);
+	matcpy(xp,x,n,1);
+			RTKtrace(1,"xp=");tracemat(1,xp,n,1,13,4);
+	        RTKtrace(1,"Px=");tracemat(1,P,n,n,13,4);
+			RTKtrace(1,"R=");tracemat(1,R,m,m,13,4);
+	matmul("NN",n,m,n,1.0,P,H,0.0,F);       /* Q=H'*P*H+R */
+	matmul("TN",m,m,n,1.0,H,F,1.0,Q);
+             RTKtrace(1,"Q=HPH+R=");tracemat(1,R,m,m,13,4);
     if (!(info=matinv(Q,m))) {
         matmul("NN",n,m,m,1.0,F,Q,0.0,K);   /* K=P*H*Q^-1 */
         matmul("NN",n,1,m,1.0,K,v,1.0,xp);  /* xp=x+K*v */
@@ -1074,7 +1074,7 @@ static int filter_(const double *x, const double *P, const double *H,
     free(F); free(Q); free(K); free(I);
     return info;
 }
-extern int filter(double *x, double *P, const double *H, const double *v,
+extern int RTKfilter(double *x, double *P, const double *H, const double *v,
                   const double *R, int n, int m)
 {
     double *x_,*xp_,*P_,*Pp_,*H_;
@@ -1085,9 +1085,11 @@ extern int filter(double *x, double *P, const double *H, const double *v,
     for (i=0;i<k;i++) {
         x_[i]=x[ix[i]];
         for (j=0;j<k;j++) P_[i+j*k]=P[ix[i]+ix[j]*n];
-        for (j=0;j<m;j++) H_[i+j*k]=H[ix[i]+j*n];
-    }
-    info=filter_(x_,P_,H_,v,R,k,m,xp_,Pp_);
+		for (j=0;j<m;j++) H_[i+j*k]=H[ix[i]+j*n];
+	}
+	RTKtrace(1,"Hfilter="); tracemat(1,H_,m,k,13,4);
+		RTKtrace(1,"yfilter="); tracemat(1,v,m,1,13,4);
+	info=filter_(x_,P_,H_,v,R,k,m,xp_,Pp_);
     for (i=0;i<k;i++) {
         x[ix[i]]=xp_[i];
         for (j=0;j<k;j++) P[ix[i]+ix[j]*n]=Pp_[i+j*k];
@@ -1301,7 +1303,8 @@ extern double time2gst(gtime_t t, int *week)
 extern gtime_t bdt2time(int week, double sec)
 {
     gtime_t t=epoch2time(bdt0);
-    
+    if(week>1356)
+	week-=1356; /*Yanqing: for some receivers, gpst is used in bds rinex file*/
     if (sec<-1E9||1E9<sec) sec=0.0;
     t.time+=86400*7*week+(int)sec;
     t.sec=sec-(int)sec;
@@ -1383,34 +1386,6 @@ extern void timeset(gtime_t t)
 {
     timeoffset_+=timediff(t,timeget());
 }
-/* read leap seconds table -----------------------------------------------------
-* read leap seconds table
-* args   : char    *file    I   leap seconds table file
-* return : status (1:ok,0:error)
-* notes  : (1) The records in the table file cosist of the following fields:
-*              year month day hour min sec UTC-GPST(s)
-*          (2) The date and time indicate the start UTC time for the UTC-GPST
-*          (3) The date and time should be descending order.
-*-----------------------------------------------------------------------------*/
-extern int read_leaps(const char *file)
-{
-    FILE *fp;
-    char buff[256],*p;
-    int i,n=0,ep[6],ls;
-    
-    if (!(fp=fopen(file,"r"))) return 0;
-    
-    while (fgets(buff,sizeof(buff),fp)&&n<MAXLEAPS) {
-        if ((p=strchr(buff,'#'))) *p='\0';
-        if (sscanf(buff,"%d %d %d %d %d %d %d",ep,ep+1,ep+2,ep+3,ep+4,ep+5,
-                   &ls)<7) continue;
-        for (i=0;i<6;i++) leaps[n][i]=ep[i];
-        leaps[n++][6]=ls;
-    }
-    for (i=0;i<7;i++) leaps[n][i]=0.0;
-    fclose(fp);
-    return 1;
-}
 /* gpstime to utc --------------------------------------------------------------
 * convert gpstime to utc considering leap seconds
 * args   : gtime_t t        I   time expressed in gpstime
@@ -1422,7 +1397,7 @@ extern gtime_t gpst2utc(gtime_t t)
     gtime_t tu;
     int i;
     
-    for (i=0;leaps[i][0]>0;i++) {
+    for (i=0;i<(int)sizeof(leaps)/(int)sizeof(*leaps);i++) {
         tu=timeadd(t,leaps[i][6]);
         if (timediff(tu,epoch2time(leaps[i]))>=0.0) return tu;
     }
@@ -1438,7 +1413,7 @@ extern gtime_t utc2gpst(gtime_t t)
 {
     int i;
     
-    for (i=0;leaps[i][0]>0;i++) {
+    for (i=0;i<(int)sizeof(leaps)/(int)sizeof(*leaps);i++) {
         if (timediff(t,epoch2time(leaps[i]))>=0.0) return timeadd(t,-leaps[i][6]);
     }
     return t;
@@ -1911,7 +1886,7 @@ extern void eci2ecef(gtime_t tutc, const double *erpv, double *U, double *gmst)
     double R1[9],R2[9],R3[9],R[9],W[9],N[9],P[9],NP[9];
     int i;
     
-    trace(3,"eci2ecef: tutc=%s\n",time_str(tutc,3));
+    RTKtrace(3,"eci2ecef: tutc=%s\n",time_str(tutc,3));
     
     if (fabs(timediff(tutc,tutc_))<0.01) { /* read cache */
         for (i=0;i<9;i++) U[i]=U_[i];
@@ -1958,11 +1933,11 @@ extern void eci2ecef(gtime_t tutc, const double *erpv, double *U, double *gmst)
     for (i=0;i<9;i++) U[i]=U_[i];
     if (gmst) *gmst=gmst_; 
     
-    trace(5,"gmst=%.12f gast=%.12f\n",gmst_,gast);
-    trace(5,"P=\n"); tracemat(5,P,3,3,15,12);
-    trace(5,"N=\n"); tracemat(5,N,3,3,15,12);
-    trace(5,"W=\n"); tracemat(5,W,3,3,15,12);
-    trace(5,"U=\n"); tracemat(5,U,3,3,15,12);
+    RTKtrace(5,"gmst=%.12f gast=%.12f\n",gmst_,gast);
+    RTKtrace(5,"P=\n"); tracemat(5,P,3,3,15,12);
+    RTKtrace(5,"N=\n"); tracemat(5,N,3,3,15,12);
+    RTKtrace(5,"W=\n"); tracemat(5,W,3,3,15,12);
+    RTKtrace(5,"U=\n"); tracemat(5,U,3,3,15,12);
 }
 /* decode antenna parameter field --------------------------------------------*/
 static int decodef(char *p, int n, double *v)
@@ -1983,7 +1958,7 @@ static void addpcv(const pcv_t *pcv, pcvs_t *pcvs)
     if (pcvs->nmax<=pcvs->n) {
         pcvs->nmax+=256;
         if (!(pcvs_pcv=(pcv_t *)realloc(pcvs->pcv,sizeof(pcv_t)*pcvs->nmax))) {
-            trace(1,"addpcv: memory allocation error\n");
+            RTKtrace(1,"addpcv: memory allocation error\n");
             free(pcvs->pcv); pcvs->pcv=NULL; pcvs->n=pcvs->nmax=0;
             return;
         }
@@ -2002,7 +1977,7 @@ static int readngspcv(const char *file, pcvs_t *pcvs)
     char buff[256];
     
     if (!(fp=fopen(file,"r"))) {
-        trace(2,"ngs pcv file open error: %s\n",file);
+        RTKtrace(2,"ngs pcv file open error: %s\n",file);
         return 0;
     }
     while (fgets(buff,sizeof(buff),fp)) {
@@ -2048,10 +2023,10 @@ static int readantex(const char *file, pcvs_t *pcvs)
     int i,f,freq=0,state=0,freqs[]={1,2,5,6,7,8,0};
     char buff[256];
     
-    trace(3,"readantex: file=%s\n",file);
+    RTKtrace(3,"readantex: file=%s\n",file);
     
     if (!(fp=fopen(file,"r"))) {
-        trace(2,"antex pcv file open error: %s\n",file);
+        RTKtrace(2,"antex pcv file open error: %s\n",file);
         return 0;
     }
     while (fgets(buff,sizeof(buff),fp)) {
@@ -2122,7 +2097,7 @@ extern int readpcv(const char *file, pcvs_t *pcvs)
     char *ext;
     int i,stat;
     
-    trace(3,"readpcv: file=%s\n",file);
+    RTKtrace(3,"readpcv: file=%s\n",file);
     
     if (!(ext=strrchr(file,'.'))) ext="";
     
@@ -2134,7 +2109,7 @@ extern int readpcv(const char *file, pcvs_t *pcvs)
     }
     for (i=0;i<pcvs->n;i++) {
         pcv=pcvs->pcv+i;
-        trace(4,"sat=%2d type=%20s code=%s off=%8.4f %8.4f %8.4f  %8.4f %8.4f %8.4f\n",
+        RTKtrace(4,"sat=%2d type=%20s code=%s off=%8.4f %8.4f %8.4f  %8.4f %8.4f %8.4f\n",
               pcv->sat,pcv->type,pcv->code,pcv->off[0][0],pcv->off[0][1],
               pcv->off[0][2],pcv->off[1][0],pcv->off[1][1],pcv->off[1][2]);
     }
@@ -2155,7 +2130,7 @@ extern pcv_t *searchpcv(int sat, const char *type, gtime_t time,
     char buff[MAXANT],*types[2],*p;
     int i,j,n=0;
     
-    trace(3,"searchpcv: sat=%2d type=%s\n",sat,type);
+    RTKtrace(3,"searchpcv: sat=%2d type=%s\n",sat,type);
     
     if (sat) { /* search satellite antenna */
         for (i=0;i<pcvs->n;i++) {
@@ -2182,7 +2157,7 @@ extern pcv_t *searchpcv(int sat, const char *type, gtime_t time,
             pcv=pcvs->pcv+i;
             if (strstr(pcv->type,types[0])!=pcv->type) continue;
             
-            trace(2,"pcv without radome is used type=%s\n",type);
+            RTKtrace(2,"pcv without radome is used type=%s\n",type);
             return pcv;
         }
     }
@@ -2205,7 +2180,7 @@ extern void readpos(const char *file, const char *rcv, double *pos)
     int i,j,len,np=0;
     char buff[256],str[256];
     
-    trace(3,"readpos: file=%s\n",file);
+    RTKtrace(3,"readpos: file=%s\n",file);
     
     if (!(fp=fopen(file,"r"))) {
         fprintf(stderr,"reference position file open error : %s\n",file);
@@ -2260,7 +2235,7 @@ extern int readblq(const char *file, const char *sta, double *odisp)
     for (p=staname;(*p=(char)toupper((int)(*p)));p++) ;
     
     if (!(fp=fopen(file,"r"))) {
-        trace(2,"blq file open error: file=%s\n",file);
+        RTKtrace(2,"blq file open error: file=%s\n",file);
         return 0;
     }
     while (fgets(buff,sizeof(buff),fp)) {
@@ -2277,7 +2252,7 @@ extern int readblq(const char *file, const char *sta, double *odisp)
         }
     }
     fclose(fp);
-    trace(2,"no otl parameters: sta=%s file=%s\n",sta,file);
+    RTKtrace(2,"no otl parameters: sta=%s file=%s\n",sta,file);
     return 0;
 }
 /* read earth rotation parameters ----------------------------------------------
@@ -2293,10 +2268,10 @@ extern int readerp(const char *file, erp_t *erp)
     double v[14]={0};
     char buff[256];
     
-    trace(3,"readerp: file=%s\n",file);
+    RTKtrace(3,"readerp: file=%s\n",file);
     
     if (!(fp=fopen(file,"r"))) {
-        trace(2,"erp file open error: file=%s\n",file);
+        RTKtrace(2,"erp file open error: file=%s\n",file);
         return 0;
     }
     while (fgets(buff,sizeof(buff),fp)) {
@@ -2338,7 +2313,7 @@ extern int geterp(const erp_t *erp, gtime_t time, double *erpv)
     double mjd,day,a;
     int i=0,j,k;
     
-    trace(4,"geterp:\n");
+    RTKtrace(4,"geterp:\n");
     
     if (erp->n<=0) return 0;
     
@@ -2360,20 +2335,20 @@ extern int geterp(const erp_t *erp, gtime_t time, double *erpv)
         erpv[3]=erp->data[erp->n-1].lod;
         return 1;
     }
-    for (j=0,k=erp->n-1;j<k-1;) {
+    for (j=0,k=erp->n-1;j<=k;) {
         i=(j+k)/2;
-        if (mjd<erp->data[i].mjd) k=i; else j=i;
+        if (mjd<erp->data[i].mjd) k=i-1; else j=i+1;
     }
-    if (erp->data[j].mjd==erp->data[j+1].mjd) {
+    if (erp->data[i].mjd==mjd-erp->data[i+1].mjd) {
         a=0.5;
     }
     else {
-        a=(mjd-erp->data[j].mjd)/(erp->data[j+1].mjd-erp->data[j].mjd);
+        a=(mjd-erp->data[i+1].mjd)/(erp->data[i].mjd-mjd-erp->data[i+1].mjd);
     }
-    erpv[0]=(1.0-a)*erp->data[j].xp     +a*erp->data[j+1].xp;
-    erpv[1]=(1.0-a)*erp->data[j].yp     +a*erp->data[j+1].yp;
-    erpv[2]=(1.0-a)*erp->data[j].ut1_utc+a*erp->data[j+1].ut1_utc;
-    erpv[3]=(1.0-a)*erp->data[j].lod    +a*erp->data[j+1].lod;
+    erpv[0]=(1.0-a)*erp->data[i].xp     +a*erp->data[i+1].xp;
+    erpv[1]=(1.0-a)*erp->data[i].yp     +a*erp->data[i+1].yp;
+    erpv[2]=(1.0-a)*erp->data[i].ut1_utc+a*erp->data[i+1].ut1_utc;
+    erpv[3]=(1.0-a)*erp->data[i].lod    +a*erp->data[i+1].lod;
     return 1;
 }
 /* compare ephemeris ---------------------------------------------------------*/
@@ -2390,7 +2365,7 @@ static void uniqeph(nav_t *nav)
     eph_t *nav_eph;
     int i,j;
     
-    trace(3,"uniqeph: n=%d\n",nav->n);
+    RTKtrace(3,"uniqeph: n=%d\n",nav->n);
     
     if (nav->n<=0) return;
     
@@ -2405,14 +2380,14 @@ static void uniqeph(nav_t *nav)
     nav->n=j+1;
     
     if (!(nav_eph=(eph_t *)realloc(nav->eph,sizeof(eph_t)*nav->n))) {
-        trace(1,"uniqeph malloc error n=%d\n",nav->n);
+        RTKtrace(1,"uniqeph malloc error n=%d\n",nav->n);
         free(nav->eph); nav->eph=NULL; nav->n=nav->nmax=0;
         return;
     }
     nav->eph=nav_eph;
     nav->nmax=nav->n;
     
-    trace(4,"uniqeph: n=%d\n",nav->n);
+    RTKtrace(4,"uniqeph: n=%d\n",nav->n);
 }
 /* compare glonass ephemeris -------------------------------------------------*/
 static int cmpgeph(const void *p1, const void *p2)
@@ -2428,7 +2403,7 @@ static void uniqgeph(nav_t *nav)
     geph_t *nav_geph;
     int i,j;
     
-    trace(3,"uniqgeph: ng=%d\n",nav->ng);
+    RTKtrace(3,"uniqgeph: ng=%d\n",nav->ng);
     
     if (nav->ng<=0) return;
     
@@ -2444,14 +2419,14 @@ static void uniqgeph(nav_t *nav)
     nav->ng=j+1;
     
     if (!(nav_geph=(geph_t *)realloc(nav->geph,sizeof(geph_t)*nav->ng))) {
-        trace(1,"uniqgeph malloc error ng=%d\n",nav->ng);
+        RTKtrace(1,"uniqgeph malloc error ng=%d\n",nav->ng);
         free(nav->geph); nav->geph=NULL; nav->ng=nav->ngmax=0;
         return;
     }
     nav->geph=nav_geph;
     nav->ngmax=nav->ng;
     
-    trace(4,"uniqgeph: ng=%d\n",nav->ng);
+    RTKtrace(4,"uniqgeph: ng=%d\n",nav->ng);
 }
 /* compare sbas ephemeris ----------------------------------------------------*/
 static int cmpseph(const void *p1, const void *p2)
@@ -2467,7 +2442,7 @@ static void uniqseph(nav_t *nav)
     seph_t *nav_seph;
     int i,j;
     
-    trace(3,"uniqseph: ns=%d\n",nav->ns);
+    RTKtrace(3,"uniqseph: ns=%d\n",nav->ns);
     
     if (nav->ns<=0) return;
     
@@ -2482,14 +2457,14 @@ static void uniqseph(nav_t *nav)
     nav->ns=j+1;
     
     if (!(nav_seph=(seph_t *)realloc(nav->seph,sizeof(seph_t)*nav->ns))) {
-        trace(1,"uniqseph malloc error ns=%d\n",nav->ns);
+        RTKtrace(1,"uniqseph malloc error ns=%d\n",nav->ns);
         free(nav->seph); nav->seph=NULL; nav->ns=nav->nsmax=0;
         return;
     }
     nav->seph=nav_seph;
     nav->nsmax=nav->ns;
     
-    trace(4,"uniqseph: ns=%d\n",nav->ns);
+    RTKtrace(4,"uniqseph: ns=%d\n",nav->ns);
 }
 /* unique ephemerides ----------------------------------------------------------
 * unique ephemerides in navigation data and update carrier wave length
@@ -2500,7 +2475,7 @@ extern void uniqnav(nav_t *nav)
 {
     int i,j;
     
-    trace(3,"uniqnav: neph=%d ngeph=%d nseph=%d\n",nav->n,nav->ng,nav->ns);
+    RTKtrace(3,"uniqnav: neph=%d ngeph=%d nseph=%d\n",nav->n,nav->ng,nav->ns);
     
     /* unique ephemeris */
     uniqeph (nav);
@@ -2530,7 +2505,7 @@ extern int sortobs(obs_t *obs)
 {
     int i,j,n;
     
-    trace(3,"sortobs: nobs=%d\n",obs->n);
+    RTKtrace(3,"sortobs: nobs=%d\n",obs->n);
     
     if (obs->n<=0) return 0;
     
@@ -2580,7 +2555,7 @@ extern int readnav(const char *file, nav_t *nav)
     char buff[4096],*p;
     int i,sat;
     
-    trace(3,"loadnav: file=%s\n",file);
+    RTKtrace(3,"loadnav: file=%s\n",file);
     
     if (!(fp=fopen(file,"r"))) return 0;
     
@@ -2623,7 +2598,7 @@ extern int savenav(const char *file, const nav_t *nav)
     int i;
     char id[32];
     
-    trace(3,"savenav: file=%s\n",file);
+    RTKtrace(3,"savenav: file=%s\n",file);
     
     if (!(fp=fopen(file,"w"))) return 0;
     
@@ -2682,15 +2657,15 @@ extern void freenav(nav_t *nav, int opt)
     if (opt&0x20) {free(nav->alm ); nav->alm =NULL; nav->na=nav->namax=0;}
     if (opt&0x40) {free(nav->tec ); nav->tec =NULL; nav->nt=nav->ntmax=0;}
 }
-/* debug trace functions -----------------------------------------------------*/
+/* debug RTKtrace functions -----------------------------------------------------*/
 #ifdef TRACE
 
-static FILE *fp_trace=NULL;     /* file pointer of trace */
-static char file_trace[1024];   /* trace file */
-static int level_trace=0;       /* level of trace */
+static FILE *fp_trace=NULL;     /* file pointer of RTKtrace */
+static char file_trace[1024];   /* RTKtrace file */
+static int level_trace=0;       /* level of RTKtrace */
 static unsigned int tick_trace=0; /* tick time at traceopen (ms) */
 static gtime_t time_trace={0};  /* time at traceopen */
-static lock_t lock_trace;       /* lock for trace */
+static lock_t lock_trace;       /* lock for RTKtrace */
 
 static void traceswap(void)
 {
@@ -2739,7 +2714,7 @@ extern void tracelevel(int level)
 {
     level_trace=level;
 }
-extern void trace(int level, const char *format, ...)
+extern void RTKtrace(int level, const char *format, ...)
 {
     va_list ap;
     
@@ -2880,7 +2855,7 @@ extern void traceb(int level, const unsigned char *p, int n)
 extern void traceopen(const char *file) {}
 extern void traceclose(void) {}
 extern void tracelevel(int level) {}
-extern void trace   (int level, const char *format, ...) {}
+extern void RTKtrace   (int level, const char *format, ...) {}
 extern void tracet  (int level, const char *format, ...) {}
 extern void tracemat(int level, const double *A, int n, int m, int p, int q) {}
 extern void traceobs(int level, const obsd_t *obs, int n) {}
@@ -2906,7 +2881,7 @@ extern int execcmd(const char *cmd)
     DWORD stat;
     char cmds[1024];
     
-    trace(3,"execcmd: cmd=%s\n",cmd);
+    RTKtrace(3,"execcmd: cmd=%s\n",cmd);
     
     si.cb=sizeof(si);
     sprintf(cmds,"cmd /c %s",cmd);
@@ -2918,7 +2893,7 @@ extern int execcmd(const char *cmd)
     CloseHandle(info.hThread);
     return (int)stat;
 #else
-    trace(3,"execcmd: cmd=%s\n",cmd);
+    RTKtrace(3,"execcmd: cmd=%s\n",cmd);
     
     return system(cmd);
 #endif
@@ -2940,7 +2915,7 @@ extern int expath(const char *path, char *paths[], int nmax)
     HANDLE h;
     char dir[1024]="",*p;
     
-    trace(3,"expath  : path=%s nmax=%d\n",path,nmax);
+    RTKtrace(3,"expath  : path=%s nmax=%d\n",path,nmax);
     
     if ((p=strrchr(path,'\\'))) {
         strncpy(dir,path,p-path+1); dir[p-path+1]='\0';
@@ -2961,7 +2936,7 @@ extern int expath(const char *path, char *paths[], int nmax)
     const char *file=path;
     char dir[1024]="",s1[1024],s2[1024],*p,*q,*r;
     
-    trace(3,"expath  : path=%s nmax=%d\n",path,nmax);
+    RTKtrace(3,"expath  : path=%s nmax=%d\n",path,nmax);
     
     if ((p=strrchr(path,'/'))||(p=strrchr(path,'\\'))) {
         file=p+1; strncpy(dir,path,p-path+1); dir[p-path+1]='\0';
@@ -2991,7 +2966,7 @@ extern int expath(const char *path, char *paths[], int nmax)
             }
         }
     }
-    for (i=0;i<n;i++) trace(3,"expath  : file=%s\n",paths[i]);
+    for (i=0;i<n;i++) RTKtrace(3,"expath  : file=%s\n",paths[i]);
     
     return n;
 }
@@ -3069,7 +3044,7 @@ extern int reppath(const char *path, char *rpath, gtime_t time, const char *rov,
     int week,dow,doy,stat=0;
     char rep[64];
     
-    trace(3,"reppath : path =%s time=%s rov=%s base=%s\n",path,time_str(time,0),
+    RTKtrace(3,"reppath : path =%s time=%s rov=%s base=%s\n",path,time_str(time,0),
           rov,base);
     
     strcpy(rpath,path);
@@ -3105,7 +3080,7 @@ extern int reppath(const char *path, char *rpath, gtime_t time, const char *rov,
              strstr(rpath,"%D" )||strstr(rpath,"%H" )||strstr(rpath,"%t" )) {
         return -1; /* no valid time */
     }
-    trace(3,"reppath : rpath=%s\n",rpath);
+    RTKtrace(3,"reppath : rpath=%s\n",rpath);
     return stat;
 }
 /* replace keywords in file path and generate multiple paths -------------------
@@ -3129,7 +3104,7 @@ extern int reppaths(const char *path, char *rpath[], int nmax, gtime_t ts,
     double tow,tint=86400.0;
     int i,n=0,week;
     
-    trace(3,"reppaths: path =%s nmax=%d rov=%s base=%s\n",path,nmax,rov,base);
+    RTKtrace(3,"reppaths: path =%s nmax=%d rov=%s base=%s\n",path,nmax,rov,base);
     
     if (ts.time==0||te.time==0||timediff(ts,te)>0.0) return 0;
     
@@ -3144,7 +3119,7 @@ extern int reppaths(const char *path, char *rpath[], int nmax, gtime_t ts,
         if (n==0||strcmp(rpath[n],rpath[n-1])) n++;
         time=timeadd(time,tint);
     }
-    for (i=0;i<n;i++) trace(3,"reppaths: rpath=%s\n",rpath[i]);
+    for (i=0;i<n;i++) RTKtrace(3,"reppaths: rpath=%s\n",rpath[i]);
     return n;
 }
 /* satellite carrier wave length -----------------------------------------------
@@ -3455,7 +3430,7 @@ extern double tropmapf(gtime_t time, const double pos[], const double azel[],
     const double ep[]={2000,1,1,12,0,0};
     double mjd,lat,lon,hgt,zd,gmfh,gmfw;
 #endif
-    trace(4,"tropmapf: pos=%10.6f %11.6f %6.1f azel=%5.1f %4.1f\n",
+    RTKtrace(4,"tropmapf: pos=%10.6f %11.6f %6.1f azel=%5.1f %4.1f\n",
           pos[0]*R2D,pos[1]*R2D,pos[2],azel[0]*R2D,azel[1]*R2D);
     
     if (pos[2]<-1000.0||pos[2]>20000.0) {
@@ -3501,7 +3476,7 @@ extern void antmodel(const pcv_t *pcv, const double *del, const double *azel,
     double e[3],off[3],cosel=cos(azel[1]);
     int i,j;
     
-    trace(4,"antmodel: azel=%6.1f %4.1f opt=%d\n",azel[0]*R2D,azel[1]*R2D,opt);
+    RTKtrace(4,"antmodel: azel=%6.1f %4.1f opt=%d\n",azel[0]*R2D,azel[1]*R2D,opt);
     
     e[0]=sin(azel[0])*cosel;
     e[1]=cos(azel[0])*cosel;
@@ -3512,7 +3487,7 @@ extern void antmodel(const pcv_t *pcv, const double *del, const double *azel,
         
         dant[i]=-dot(off,e,3)+(opt?interpvar(90.0-azel[1]*R2D,pcv->var[i]):0.0);
     }
-    trace(5,"antmodel: dant=%6.3f %6.3f\n",dant[0],dant[1]);
+    RTKtrace(5,"antmodel: dant=%6.3f %6.3f\n",dant[0],dant[1]);
 }
 /* satellite antenna model ------------------------------------------------------
 * compute satellite antenna phase center parameters
@@ -3525,12 +3500,12 @@ extern void antmodel_s(const pcv_t *pcv, double nadir, double *dant)
 {
     int i;
     
-    trace(4,"antmodel_s: nadir=%6.1f\n",nadir*R2D);
+    RTKtrace(4,"antmodel_s: nadir=%6.1f\n",nadir*R2D);
     
     for (i=0;i<NFREQ;i++) {
         dant[i]=interpvar(nadir*R2D*5.0,pcv->var[i]);
     }
-    trace(5,"antmodel_s: dant=%6.3f %6.3f\n",dant[0],dant[1]);
+    RTKtrace(5,"antmodel_s: dant=%6.3f %6.3f\n",dant[0],dant[1]);
 }
 /* sun and moon position in eci (ref [4] 5.1.1, 5.2.1) -----------------------*/
 static void sunmoonpos_eci(gtime_t tut, double *rsun, double *rmoon)
@@ -3538,7 +3513,7 @@ static void sunmoonpos_eci(gtime_t tut, double *rsun, double *rmoon)
     const double ep2000[]={2000,1,1,12,0,0};
     double t,f[5],eps,Ms,ls,rs,lm,pm,rm,sine,cose,sinp,cosp,sinl,cosl;
     
-    trace(3,"sunmoonpos_eci: tut=%s\n",time_str(tut,3));
+    RTKtrace(3,"sunmoonpos_eci: tut=%s\n",time_str(tut,3));
     
     t=timediff(tut,epoch2time(ep2000))/86400.0/36525.0;
     
@@ -3559,7 +3534,7 @@ static void sunmoonpos_eci(gtime_t tut, double *rsun, double *rmoon)
         rsun[1]=rs*cose*sinl;
         rsun[2]=rs*sine*sinl;
         
-        trace(5,"rsun =%.3f %.3f %.3f\n",rsun[0],rsun[1],rsun[2]);
+        RTKtrace(5,"rsun =%.3f %.3f %.3f\n",rsun[0],rsun[1],rsun[2]);
     }
     /* moon position in eci */
     if (rmoon) {
@@ -3575,7 +3550,7 @@ static void sunmoonpos_eci(gtime_t tut, double *rsun, double *rmoon)
         rmoon[1]=rm*(cose*cosp*sinl-sine*sinp);
         rmoon[2]=rm*(sine*cosp*sinl+cose*sinp);
         
-        trace(5,"rmoon=%.3f %.3f %.3f\n",rmoon[0],rmoon[1],rmoon[2]);
+        RTKtrace(5,"rmoon=%.3f %.3f %.3f\n",rmoon[0],rmoon[1],rmoon[2]);
     }
 }
 /* sun and moon position -------------------------------------------------------
@@ -3593,7 +3568,7 @@ extern void sunmoonpos(gtime_t tutc, const double *erpv, double *rsun,
     gtime_t tut;
     double rs[3],rm[3],U[9],gmst_;
     
-    trace(3,"sunmoonpos: tutc=%s\n",time_str(tutc,3));
+    RTKtrace(3,"sunmoonpos: tutc=%s\n",time_str(tutc,3));
     
     tut=timeadd(tutc,erpv[2]); /* utc -> ut1 */
     
@@ -3626,7 +3601,7 @@ extern void windupcorr(gtime_t time, const double *rs, const double *rr,
     double dr[3],ds[3],drs[3],r[3],pos[3],rsun[3],cosp,ph,erpv[5]={0};
     int i;
     
-    trace(4,"windupcorr: time=%s\n",time_str(time,0));
+    RTKtrace(4,"windupcorr: time=%s\n",time_str(time,0));
     
     /* sun position in ecef */
     sunmoonpos(gpst2utc(time),erpv,rsun,NULL,NULL);
@@ -3667,7 +3642,7 @@ extern void windupcorr(gtime_t time, const double *rs, const double *rr,
     *phw=ph+floor(*phw-ph+0.5); /* in cycle */
 }
 /* carrier smoothing -----------------------------------------------------------
-* carrier smoothing by Hatch filter
+* carrier smoothing by Hatch RTKfilter
 * args   : obs_t  *obs      IO  raw observation data/smoothed observation data
 *          int    ns        I   smoothing window size (epochs)
 * return : none
@@ -3678,7 +3653,7 @@ extern void csmooth(obs_t *obs, int ns)
     int i,j,s,r,n[2][MAXSAT][NFREQ]={{{0}}};
     obsd_t *p;
     
-    trace(3,"csmooth: nobs=%d,ns=%d\n",obs->n,ns);
+    RTKtrace(3,"csmooth: nobs=%d,ns=%d\n",obs->n,ns);
     
     for (i=0;i<obs->n;i++) {
         p=&obs->data[i]; s=p->sat; r=p->rcv;
@@ -3709,7 +3684,7 @@ extern int uncompress(const char *file, char *uncfile)
     int stat=0;
     char *p,cmd[2048]="",tmpfile[1024]="",buff[1024],*fname,*dir="";
     
-    trace(3,"uncompress: file=%s\n",file);
+    RTKtrace(3,"uncompress: file=%s\n",file);
     
     strcpy(tmpfile,file);
     if (!(p=strrchr(tmpfile,'.'))) return 0;
@@ -3769,7 +3744,7 @@ extern int uncompress(const char *file, char *uncfile)
         if (stat) remove(tmpfile);
         stat=1;
     }
-    trace(3,"uncompress: stat=%d\n",stat);
+    RTKtrace(3,"uncompress: stat=%d\n",stat);
     return stat;
 }
 /* dummy application functions for shared library ----------------------------*/

@@ -449,7 +449,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
     */
     if (raw->pbuff[raw->plen-1] != ETX)
     {
-        trace( 2, "RT17: Prospective packet did not end with an "
+        RTKtrace( 2, "RT17: Prospective packet did not end with an "
                   "ETX character. Some data lost.\n" );
         clear_packet_buffer(raw);
         return (0);
@@ -461,7 +461,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
     */
     if (!check_packet_checksum(raw))
     {
-        trace(2, "RT17: Packet checksum failure. Packet discarded.\n");
+        RTKtrace(2, "RT17: Packet checksum failure. Packet discarded.\n");
         clear_packet_buffer(raw);
         return(0);
     }
@@ -503,7 +503,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
         {       
             if (page != 1)
             {
-                trace( 2, "RT17: First RAWDATA packet is not page #1. "
+                RTKtrace( 2, "RT17: First RAWDATA packet is not page #1. "
                           "Packet discarded.\n" );
                 clear_packet_buffer(raw);
                 return (0);
@@ -513,7 +513,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
         }
         else if ((reply != raw->reply) || (page != (raw->page + 1)))
         {
-            trace( 2, "RT17: RAWDATA packet sequence number mismatch or page "
+            RTKtrace( 2, "RT17: RAWDATA packet sequence number mismatch or page "
                       "out of order. %d RAWDATA packets discarded.\n", page );
             clear_message_buffer(raw);
             clear_packet_buffer(raw);
@@ -525,7 +525,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
         */
         if ((raw->nbyte + raw->pbyte) > MAXRAWLEN)
         {
-            trace( 2, "RT17: Buffer would overflow. "
+            RTKtrace( 2, "RT17: Buffer would overflow. "
                       "%d RAWDATA packets discarded.\n", page );
             clear_message_buffer(raw);
             clear_packet_buffer(raw);
@@ -571,7 +571,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
         {       
             if (page != 0)
             {
-                trace( 3, "RT17: First GENOUT packet is not page #0. "
+                RTKtrace( 3, "RT17: First GENOUT packet is not page #0. "
                           "Packet discarded.\n" );
                 clear_packet_buffer(raw);
                 return (0);
@@ -581,7 +581,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
         }
         else if ((reply != raw->reply) || (page != (raw->page + 1)))
         {
-            trace( 2, "RT17: GENOUT packet sequence number mismatch or page "
+            RTKtrace( 2, "RT17: GENOUT packet sequence number mismatch or page "
                       "out of order. %d GENOUT packets discarded.\n", page );
             clear_message_buffer(raw);
             clear_packet_buffer(raw);
@@ -593,7 +593,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
         */
         if ((raw->nbyte + raw->pbyte) > MAXRAWLEN)
         {
-            trace( 2, "RT17: Buffer would overflow. "
+            RTKtrace( 2, "RT17: Buffer would overflow. "
                       "%d GENOUT packets discarded.\n", page );
             clear_message_buffer(raw);
             clear_packet_buffer(raw);
@@ -623,7 +623,7 @@ extern int input_rt17(raw_t *raw, unsigned char data)
     | (and hence we can't really even get here). Dump the packet on the floor
     | and continue reading from the stream.
     */
-    trace( 2, "RT17: Packet is not GENOUT, RAWDATA or RETSVDATA. "
+    RTKtrace( 2, "RT17: Packet is not GENOUT, RAWDATA or RETSVDATA. "
               "Packet discarded.\n" ); 
     clear_packet_buffer(raw);
     return (0);
@@ -909,7 +909,7 @@ static void decode_genout(raw_t *raw, int endian)
         if (!recordtype_s)
             recordtype_s = "Unknown";
 
-        trace( 4, "RT17: Packet type=0X40 (GENOUT), GSOF record type=%d (%s), "
+        RTKtrace( 4, "RT17: Packet type=0X40 (GENOUT), GSOF record type=%d (%s), "
                   "length=%d.\n", recordtype, recordtype_s, len );
       
         /*
@@ -930,7 +930,7 @@ static void decode_genout(raw_t *raw, int endian)
             decode_gsof_41(raw, p, endian);
             break;
         default:
-            trace(4, "RT17: GSOF message not processed.\n");    
+            RTKtrace(4, "RT17: GSOF message not processed.\n");    
         }
 
         len += 2;
@@ -981,11 +981,11 @@ static int decode_gps_ephemeris(raw_t *raw, int e)
     double sqrtA;
     eph_t eph={0};
 
-    trace(4, "RT17: decode_gps_ephemeris, length=%d\n", raw->plen);
+    RTKtrace(4, "RT17: decode_gps_ephemeris, length=%d\n", raw->plen);
 
     if (raw->plen < 182)
     {
-        trace( 2, "RT17: RETSVDATA packet length %d < 182 bytes. "
+        RTKtrace( 2, "RT17: RETSVDATA packet length %d < 182 bytes. "
                   "GPS ephemeris packet discarded.\n", raw->plen );
         return (-1);
     }
@@ -994,7 +994,7 @@ static int decode_gps_ephemeris(raw_t *raw, int e)
 
     if (!(sat=satno(SYS_GPS, prn)))
     {
-        trace(2, "RT17: GPS ephemeris satellite number error, PRN=%d.\n", prn);
+        RTKtrace(2, "RT17: GPS ephemeris satellite number error, PRN=%d.\n", prn);
         return (-1);
     }
  
@@ -1088,7 +1088,7 @@ static int decode_gps_ephemeris(raw_t *raw, int e)
     eph.toe   = gpst2time(eph.week, toe);
     eph.ttr   = gpst2time(eph.week, tow);
 
-    trace( 4, "RT17: decode_gps_ephemeris, SAT=%d, IODC=%d, IODE=%d.\n",
+    RTKtrace( 4, "RT17: decode_gps_ephemeris, SAT=%d, IODC=%d, IODE=%d.\n",
            sat, eph.iodc, eph.iodc );
 
     if (!strstr(raw->opt,"-EPHALL"))
@@ -1137,7 +1137,7 @@ static void decode_gsof_1(raw_t *raw, unsigned char *p, int endian)
 {
 
     if (p[1] < 7)
-       trace( 2, "RT17: GSOF Position Time message "
+       RTKtrace( 2, "RT17: GSOF Position Time message "
                  "record length %d < 7 bytes. Record discarded.\n", p[1] );
     else
         set_week(raw, I2(p+6, endian), (double) I4(p+2, endian));
@@ -1175,7 +1175,7 @@ static void decode_gsof_1(raw_t *raw, unsigned char *p, int endian)
 static void decode_gsof_16(raw_t *raw, unsigned char *p, int endian)
 {
     if (p[1] < 10)
-        trace( 2, "RT17: GSOF Current Time message "
+        RTKtrace( 2, "RT17: GSOF Current Time message "
                   "record length %d < 10 bytes. Record discarded.\n", p[1] );
     else if (U1(p+10) & 1) /* If week and milliseconds of week are valid */
         set_week(raw, I2(p+6, endian), (double) I4(p+2, endian));
@@ -1213,7 +1213,7 @@ static void decode_gsof_16(raw_t *raw, unsigned char *p, int endian)
 static void decode_gsof_26(raw_t *raw, unsigned char *p, int endian)
 {
     if (p[1] < 7)
-       trace( 2, "RT17: GSOF Position Time UTC message "
+       RTKtrace( 2, "RT17: GSOF Position Time UTC message "
                  "record length %d < 7 bytes. Record discarded.\n", p[1] );
     else
         set_week(raw, I2(p+6, endian), (double) I4(p+2, endian));
@@ -1251,7 +1251,7 @@ static void decode_gsof_26(raw_t *raw, unsigned char *p, int endian)
 static void decode_gsof_41(raw_t *raw, unsigned char *p, int endian)
 {
     if (p[1] < 7)
-        trace( 2, "RT17: GSOF Base Position and Quality Indicator message "
+        RTKtrace( 2, "RT17: GSOF Base Position and Quality Indicator message "
                    "record length %d < 7 bytes. Record discarded.\n", p[1] );
     else 
         set_week(raw, I2(p+6, endian), (double) I4(p+2, endian));
@@ -1296,11 +1296,11 @@ static int decode_ion_utc_data(raw_t *raw, int e)
     int week;
     unsigned char *p = raw->pbuff;
    
-    trace(4, "RT17: decode_ion_utc_data, length=%d.\n", raw->plen);
+    RTKtrace(4, "RT17: decode_ion_utc_data, length=%d.\n", raw->plen);
 
     if (raw->plen < 129)
     {
-        trace( 2, "RT17: RETSVDATA packet length %d < 129 bytes. "
+        RTKtrace( 2, "RT17: RETSVDATA packet length %d < 129 bytes. "
                   "GPS ION / UTC data packet discarded.\n", raw->plen );
         return (-1);
     }
@@ -1386,7 +1386,7 @@ static int decode_rawdata(raw_t *raw, int endian)
     if (!recordtype_s)
         recordtype_s = "Unknown";
   
-    trace( 3, "RT17: Packet type=0X57 (RAWDATA), recordtype=%d (%s), "
+    RTKtrace( 3, "RT17: Packet type=0X57 (RAWDATA), recordtype=%d (%s), "
               "length=%d.\n", recordtype, recordtype_s, raw->len );
       
     /*
@@ -1407,7 +1407,7 @@ static int decode_rawdata(raw_t *raw, int endian)
         status = decode_type_29(raw, endian);
         break;
     default:
-        trace(3, "RT17: Packet not processed.\n");      
+        RTKtrace(3, "RT17: Packet not processed.\n");      
     }
 
     return (status);
@@ -1480,7 +1480,7 @@ static int decode_retsvdata(raw_t *raw, int endian)
     if (!subtype_s)
         subtype_s = "Unknown";
  
-    trace( 3, "RT17: packet type=0X55 (RETSVDATA), subtype=%d (%s), "
+    RTKtrace( 3, "RT17: packet type=0X55 (RETSVDATA), subtype=%d (%s), "
               "length=%d.\n", subtype, subtype_s, raw->plen );
       
     /*
@@ -1495,7 +1495,7 @@ static int decode_retsvdata(raw_t *raw, int endian)
         status = decode_ion_utc_data(raw, endian);
         break;
     default:
-        trace(3, "RT17: Packet not processed.\n");      
+        RTKtrace(3, "RT17: Packet not processed.\n");      
       }
 
     return (status);
@@ -1803,7 +1803,7 @@ static int decode_type_17(raw_t *raw, unsigned int rif, int e)
 
         if (!(sat=satno(SYS_GPS, prn)))
         {
-            trace(2, "RT17: Satellite number error, PRN=%d.\n", prn);
+            RTKtrace(2, "RT17: Satellite number error, PRN=%d.\n", prn);
             continue;
         }
 
@@ -1886,7 +1886,7 @@ static int decode_type_29(raw_t *raw, int endian)
     unsigned char *p = raw->buff;
 
     if (*p < 7)
-       trace( 2, "RT17: Enhanced Position record block #1 length %d < 7 bytes. "
+       RTKtrace( 2, "RT17: Enhanced Position record block #1 length %d < 7 bytes. "
                  "Record discarded.\n", *p );
     else
         set_week(raw, I2(p+1, endian), (double) I4(p+3, endian));
@@ -1934,7 +1934,7 @@ static int get_week(raw_t *raw, double receive_time)
         if ((receive_time && raw->receive_time) &&
             (receive_time < raw->receive_time))
         {
-            trace( 2, "RT17: GPS WEEK rolled over from %d to %d.\n",
+            RTKtrace( 2, "RT17: GPS WEEK rolled over from %d to %d.\n",
                    raw->week, raw->week + 1 );
 
             raw->week++;
@@ -1952,13 +1952,13 @@ static int get_week(raw_t *raw, double receive_time)
         if (opt)
         {
             if (!sscanf(opt+6, "%d", &week) || (week <= 0))
-                trace(2, "RT17: Invalid -WEEK=n receiver option value.\n");
+                RTKtrace(2, "RT17: Invalid -WEEK=n receiver option value.\n");
             else
             {
                 raw->week = week;
                 raw->flag |= M_WEEK_OPTION;
 
-                trace( 2, "RT17: Initial GPS WEEK explicitly set to %d "
+                RTKtrace( 2, "RT17: Initial GPS WEEK explicitly set to %d "
                           "by user.\n", week );
             }
         }
@@ -1979,7 +1979,7 @@ static int get_week(raw_t *raw, double receive_time)
 
         raw->week = week;
         
-        trace( 2, "RT17: Initial GPS WEEK number unknown; "
+        RTKtrace( 2, "RT17: Initial GPS WEEK number unknown; "
                   "WEEK number %d assumed.\n", week );
     }
  
@@ -2283,13 +2283,13 @@ static unsigned int read_u4(unsigned char *p, int endian)
             if (week != raw->week)
             {
                 if (week == (raw->week + 1))
-                    trace(2, "RT17: GPS WEEK rolled over from %d to %d.\n", raw->week, week);
+                    RTKtrace(2, "RT17: GPS WEEK rolled over from %d to %d.\n", raw->week, week);
                 else
-                    trace(2, "RT17: GPS WEEK changed from %d to %d.\n", raw->week, week);
+                    RTKtrace(2, "RT17: GPS WEEK changed from %d to %d.\n", raw->week, week);
             }
         }
         else
-            trace(2, "RT17: GPS WEEK initially set to %d.\n", week);
+            RTKtrace(2, "RT17: GPS WEEK initially set to %d.\n", week);
 
         raw->week = week;
     }
@@ -2459,7 +2459,7 @@ static void unwrap_rawdata(raw_t *raw, unsigned int *rif)
     while (length_in_total > 0)
     {
         if ((unsigned int)p_in[7] != *rif)
-           trace( 2, "RT17: Inconsistent Record Interpretation "
+           RTKtrace( 2, "RT17: Inconsistent Record Interpretation "
                      "Flags within a single RAWDATA message.\n" );
 
         length_in = p_in[3] + 6;

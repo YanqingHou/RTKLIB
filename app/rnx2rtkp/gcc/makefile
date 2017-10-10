@@ -152,7 +152,7 @@ test25 :
 	$(CMD1) -k opts4.conf $(INPUT11) $(INPUT12) -y 2 -o test25.pos
 
 clean :
-	rm -f rnx2rtkp rnx2rtkp.exe *.o *.pos *.trace
+	rm -f rnx2rtkp rnx2rtkp.exe *.o *.pos *.RTKtrace
 
 prof :
 	gprof rnx2rtkp > prof.txt

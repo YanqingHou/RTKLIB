@@ -56,7 +56,7 @@ static int decode_type1(rtcm_t *rtcm)
     int i=48,fact,udre,prn,sat,iod;
     double prc,rrc;
     
-    trace(4,"decode_type1: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type1: len=%d\n",rtcm->len);
     
     while (i+40<=rtcm->len*8) {
         fact=getbitu(rtcm->buff,i, 1); i+= 1;
@@ -67,7 +67,7 @@ static int decode_type1(rtcm_t *rtcm)
         iod =getbits(rtcm->buff,i, 8); i+= 8;
         if (prn==0) prn=32;
         if (prc==0x80000000||rrc==0xFFFF8000) {
-            trace(2,"rtcm2 1 prc/rrc indicates satellite problem: prn=%d\n",prn);
+            RTKtrace(2,"rtcm2 1 prc/rrc indicates satellite problem: prn=%d\n",prn);
             continue;
         }
         if (rtcm->dgps) {
@@ -86,7 +86,7 @@ static int decode_type3(rtcm_t *rtcm)
 {
     int i=48;
     
-    trace(4,"decode_type3: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type3: len=%d\n",rtcm->len);
     
     if (i+96<=rtcm->len*8) {
         rtcm->sta.pos[0]=getbits(rtcm->buff,i,32)*0.01; i+=32;
@@ -94,7 +94,7 @@ static int decode_type3(rtcm_t *rtcm)
         rtcm->sta.pos[2]=getbits(rtcm->buff,i,32)*0.01;
     }
     else {
-        trace(2,"rtcm2 3 length error: len=%d\n",rtcm->len);
+        RTKtrace(2,"rtcm2 3 length error: len=%d\n",rtcm->len);
         return -1;
     }
     return 5;
@@ -105,7 +105,7 @@ static int decode_type14(rtcm_t *rtcm)
     double zcnt;
     int i=48,week,hour,leaps;
     
-    trace(4,"decode_type14: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type14: len=%d\n",rtcm->len);
     
     zcnt=getbitu(rtcm->buff,24,13);
     if (i+24<=rtcm->len*8) {
@@ -114,7 +114,7 @@ static int decode_type14(rtcm_t *rtcm)
         leaps=getbitu(rtcm->buff,i, 6);
     }
     else {
-        trace(2,"rtcm2 14 length error: len=%d\n",rtcm->len);
+        RTKtrace(2,"rtcm2 14 length error: len=%d\n",rtcm->len);
         return -1;
     }
     week=adjgpsweek(week);
@@ -127,14 +127,14 @@ static int decode_type16(rtcm_t *rtcm)
 {
     int i=48,n=0;
     
-    trace(4,"decode_type16: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type16: len=%d\n",rtcm->len);
     
     while (i+8<=rtcm->len*8&&n<90) {
         rtcm->msg[n++]=getbitu(rtcm->buff,i,8); i+=8;
     }
     rtcm->msg[n]='\0';
     
-    trace(3,"rtcm2 16 message: %s\n",rtcm->msg);
+    RTKtrace(3,"rtcm2 16 message: %s\n",rtcm->msg);
     return 9;
 }
 /* decode type 17: gps ephemerides -------------------------------------------*/
@@ -144,7 +144,7 @@ static int decode_type17(rtcm_t *rtcm)
     double toc,sqrtA;
     int i=48,week,prn,sat;
     
-    trace(4,"decode_type17: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type17: len=%d\n",rtcm->len);
     
     if (i+480<=rtcm->len*8) {
         week      =getbitu(rtcm->buff,i,10);              i+=10;
@@ -178,7 +178,7 @@ static int decode_type17(rtcm_t *rtcm)
         eph.flag  =getbitu(rtcm->buff,i, 1);
     }
     else {
-        trace(2,"rtcm2 17 length error: len=%d\n",rtcm->len);
+        RTKtrace(2,"rtcm2 17 length error: len=%d\n",rtcm->len);
         return -1;
     }
     if (prn==0) prn=32;
@@ -200,18 +200,18 @@ static int decode_type18(rtcm_t *rtcm)
     double usec,cp,tt;
     int i=48,index,freq,sync=1,code,sys,prn,sat,loss;
     
-    trace(4,"decode_type18: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type18: len=%d\n",rtcm->len);
     
     if (i+24<=rtcm->len*8) {
         freq=getbitu(rtcm->buff,i, 2); i+= 2+2;
         usec=getbitu(rtcm->buff,i,20); i+=20;
     }
     else {
-        trace(2,"rtcm2 18 length error: len=%d\n",rtcm->len);
+        RTKtrace(2,"rtcm2 18 length error: len=%d\n",rtcm->len);
         return -1;
     }
     if (freq&0x1) {
-        trace(2,"rtcm2 18 not supported frequency: freq=%d\n",freq);
+        RTKtrace(2,"rtcm2 18 not supported frequency: freq=%d\n",freq);
         return -1;
     }
     freq>>=1;
@@ -225,7 +225,7 @@ static int decode_type18(rtcm_t *rtcm)
         cp  =getbits(rtcm->buff,i,32); i+=32;
         if (prn==0) prn=32;
         if (!(sat=satno(sys?SYS_GLO:SYS_GPS,prn))) {
-            trace(2,"rtcm2 18 satellite number error: sys=%d prn=%d\n",sys,prn);
+            RTKtrace(2,"rtcm2 18 satellite number error: sys=%d prn=%d\n",sys,prn);
             continue;
         }
         time=timeadd(rtcm->time,usec*1E-6);
@@ -253,18 +253,18 @@ static int decode_type19(rtcm_t *rtcm)
     double usec,pr,tt;
     int i=48,index,freq,sync=1,code,sys,prn,sat;
     
-    trace(4,"decode_type19: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type19: len=%d\n",rtcm->len);
     
     if (i+24<=rtcm->len*8) {
         freq=getbitu(rtcm->buff,i, 2); i+= 2+2;
         usec=getbitu(rtcm->buff,i,20); i+=20;
     }
     else {
-        trace(2,"rtcm2 19 length error: len=%d\n",rtcm->len);
+        RTKtrace(2,"rtcm2 19 length error: len=%d\n",rtcm->len);
         return -1;
     }
     if (freq&0x1) {
-        trace(2,"rtcm2 19 not supported frequency: freq=%d\n",freq);
+        RTKtrace(2,"rtcm2 19 not supported frequency: freq=%d\n",freq);
         return -1;
     }
     freq>>=1;
@@ -277,7 +277,7 @@ static int decode_type19(rtcm_t *rtcm)
         pr  =getbitu(rtcm->buff,i,32); i+=32;
         if (prn==0) prn=32;
         if (!(sat=satno(sys?SYS_GLO:SYS_GPS,prn))) {
-            trace(2,"rtcm2 19 satellite number error: sys=%d prn=%d\n",sys,prn);
+            RTKtrace(2,"rtcm2 19 satellite number error: sys=%d prn=%d\n",sys,prn);
             continue;
         }
         time=timeadd(rtcm->time,usec*1E-6);
@@ -302,7 +302,7 @@ static int decode_type22(rtcm_t *rtcm)
     double del[2][3]={{0}},hgt=0.0;
     int i=48,j,noh;
     
-    trace(4,"decode_type22: len=%d\n",rtcm->len);
+    RTKtrace(4,"decode_type22: len=%d\n",rtcm->len);
     
     if (i+24<=rtcm->len*8) {
         del[0][0]=getbits(rtcm->buff,i,8)/25600.0; i+=8;
@@ -310,7 +310,7 @@ static int decode_type22(rtcm_t *rtcm)
         del[0][2]=getbits(rtcm->buff,i,8)/25600.0; i+=8;
     }
     else {
-        trace(2,"rtcm2 22 length error: len=%d\n",rtcm->len);
+        RTKtrace(2,"rtcm2 22 length error: len=%d\n",rtcm->len);
         return -1;
     }
     if (i+24<=rtcm->len*8) {
@@ -374,10 +374,10 @@ extern int decode_rtcm2(rtcm_t *rtcm)
     double zcnt;
     int staid,seqno,stah,ret=0,type=getbitu(rtcm->buff,8,6);
     
-    trace(3,"decode_rtcm2: type=%2d len=%3d\n",type,rtcm->len);
+    RTKtrace(3,"decode_rtcm2: type=%2d len=%3d\n",type,rtcm->len);
     
     if ((zcnt=getbitu(rtcm->buff,24,13)*0.6)>=3600.0) {
-        trace(2,"rtcm2 modified z-count error: zcnt=%.1f\n",zcnt);
+        RTKtrace(2,"rtcm2 modified z-count error: zcnt=%.1f\n",zcnt);
         return -1;
     }
     adjhour(rtcm,zcnt);
@@ -385,7 +385,7 @@ extern int decode_rtcm2(rtcm_t *rtcm)
     seqno=getbitu(rtcm->buff,37, 3);
     stah =getbitu(rtcm->buff,45, 3);
     if (seqno-rtcm->seqno!=1&&seqno-rtcm->seqno!=-7) {
-        trace(2,"rtcm2 message outage: seqno=%d->%d\n",rtcm->seqno,seqno);
+        RTKtrace(2,"rtcm2 message outage: seqno=%d->%d\n",rtcm->seqno,seqno);
     }
     rtcm->seqno=seqno;
     rtcm->stah =stah;
@@ -396,12 +396,12 @@ extern int decode_rtcm2(rtcm_t *rtcm)
     }
     if (type==3||type==22||type==23||type==24) {
         if (rtcm->staid!=0&&staid!=rtcm->staid) {
-           trace(2,"rtcm2 station id changed: %d->%d\n",rtcm->staid,staid);
+           RTKtrace(2,"rtcm2 station id changed: %d->%d\n",rtcm->staid,staid);
         }
         rtcm->staid=staid;
     }
     if (rtcm->staid!=0&&staid!=rtcm->staid) {
-        trace(2,"rtcm2 station id invalid: %d %d\n",staid,rtcm->staid);
+        RTKtrace(2,"rtcm2 station id invalid: %d %d\n",staid,rtcm->staid);
         return -1;
     }
     switch (type) {

@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------------------
 * pntpos.c : standard positioning
 *
-*          Copyright (C) 2007-2015 by T.TAKASU, All rights reserved.
+*          Copyright (C) 2007-2010 by T.TAKASU, All rights reserved.
 *
 * version : $Revision:$ $Date:$
 * history : 2010/07/28 1.0  moved from rtkcmn.c
@@ -15,7 +15,6 @@
 *           2011/11/08 1.2  enable snr mask for single-mode (rtklib_2.4.1_p3)
 *           2012/12/25 1.3  add variable snr mask
 *           2014/05/26 1.4  support galileo and beidou
-*           2015/03/19 1.5  fix bug on ionosphere correction for GLO and BDS
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
@@ -43,6 +42,42 @@ static double varerr(const prcopt_t *opt, double el, int sys)
     varr=SQR(opt->err[0])*(SQR(opt->err[1])+SQR(opt->err[2])/sin(el));
     if (opt->ionoopt==IONOOPT_IFLC) varr*=SQR(3.0); /* iono-free */
     return SQR(fact)*varr;
+}
+/* pseudorange measurement error variance ------------------------------------*/
+static double varerrYQ(const prcopt_t *opt, double el, int sys)
+{
+	double varr;
+
+	if (opt->err[1]==10) { /*exponential model*/
+		if (sys==SYS_GPS) {
+			varr=0.0232+0.4817*exp(-R2D*el/15);
+		}else if(sys==SYS_CMP){
+			varr=0.0587+0.6125*exp(-R2D*el/15);
+		}
+		else{
+		;
+		}
+		if (opt->ionoopt==IONOOPT_IFLC) varr*=SQR(3.0); /* iono-free */
+	}
+	else if(opt->err[1]==20){  /*sin model*/
+		if (sys==SYS_GPS) {
+			varr=0.0130+0.0355/sin(el);
+		}else if(sys==SYS_CMP){
+			varr=0.0330+0.0487/sin(el);
+		}
+		else {
+		;
+		}
+		if (opt->ionoopt==IONOOPT_IFLC) varr*=SQR(3.0); /* iono-free */
+	}
+    	else if(opt->err[1]==30){  /*no elevation weighting*/
+         varr=0.09;
+		if (opt->ionoopt==IONOOPT_IFLC) varr*=SQR(3.0); /* iono-free */
+	}
+	else {
+		varr= varerr(opt,el,sys);
+		}
+	return varr;
 }
 /* get tgd parameter (m) -----------------------------------------------------*/
 static double gettgd(int sat, const nav_t *nav)
@@ -74,7 +109,7 @@ static double prange(const obsd_t *obs, const nav_t *nav, const double *azel,
     /* test snr mask */
     if (iter>0) {
         if (testsnr(0,i,azel[1],obs->SNR[i]*0.25,&opt->snrmask)) {
-            trace(4,"snr mask: %s sat=%2d el=%.1f snr=%.1f\n",
+            RTKtrace(4,"snr mask: %s sat=%2d el=%.1f snr=%.1f\n",
                   time_str(obs->time,0),obs->sat,azel[1]*R2D,obs->SNR[i]*0.25);
             return 0.0;
         }
@@ -129,7 +164,7 @@ static double prange(const obsd_t *obs, const nav_t *nav, const double *azel,
 extern int ionocorr(gtime_t time, const nav_t *nav, int sat, const double *pos,
                     const double *azel, int ionoopt, double *ion, double *var)
 {
-    trace(4,"ionocorr: time=%s opt=%d sat=%2d pos=%.3f %.3f azel=%.3f %.3f\n",
+    RTKtrace(4,"ionocorr: time=%s opt=%d sat=%2d pos=%.3f %.3f azel=%.3f %.3f\n",
           time_str(time,3),ionoopt,sat,pos[0]*R2D,pos[1]*R2D,azel[0]*R2D,
           azel[1]*R2D);
     
@@ -175,7 +210,7 @@ extern int ionocorr(gtime_t time, const nav_t *nav, int sat, const double *pos,
 extern int tropcorr(gtime_t time, const nav_t *nav, const double *pos,
                     const double *azel, int tropopt, double *trp, double *var)
 {
-    trace(4,"tropcorr: time=%s opt=%d pos=%.3f %.3f azel=%.3f %.3f\n",
+    RTKtrace(4,"tropcorr: time=%s opt=%d pos=%.3f %.3f azel=%.3f %.3f\n",
           time_str(time,3),tropopt,pos[0]*R2D,pos[1]*R2D,azel[0]*R2D,
           azel[1]*R2D);
     
@@ -202,10 +237,10 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
                    double *v, double *H, double *var, double *azel, int *vsat,
                    double *resp, int *ns)
 {
-    double r,dion,dtrp,vmeas,vion,vtrp,rr[3],pos[3],dtr,e[3],P,lam_L1;
+    double r,dion,dtrp,vmeas,vion,vtrp,rr[3],pos[3],dtr,e[3],P;
     int i,j,nv=0,sys,mask[4]={0};
-    
-    trace(3,"resprng : n=%d\n",n);
+	
+    RTKtrace(3,"resprng : n=%d\n",n);
     
     for (i=0;i<3;i++) rr[i]=x[i]; dtr=x[3];
     
@@ -218,15 +253,16 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         
         /* reject duplicated observation data */
         if (i<n-1&&i<MAXOBS-1&&obs[i].sat==obs[i+1].sat) {
-            trace(2,"duplicated observation data %s sat=%2d\n",
+            RTKtrace(2,"duplicated observation data %s sat=%2d\n",
                   time_str(obs[i].time,3),obs[i].sat);
             i++;
             continue;
         }
-        /* geometric distance/azimuth/elevation angle */
+		/* geometric distance/azimuth/elevation angle */
+
         if ((r=geodist(rs+i*6,rr,e))<=0.0||
             satazel(pos,e,azel+i*2)<opt->elmin) continue;
-        
+	   /*	 satazel(pos,e,azel+i*2);   */
         /* psudorange with code bias correction */
         if ((P=prange(obs+i,nav,azel+i*2,iter,opt,&vmeas))==0.0) continue;
         
@@ -237,10 +273,6 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         if (!ionocorr(obs[i].time,nav,obs[i].sat,pos,azel+i*2,
                       iter>0?opt->ionoopt:IONOOPT_BRDC,&dion,&vion)) continue;
         
-        /* GPS-L1 -> L1/B1 */
-        if ((lam_L1=nav->lam[obs[i].sat-1][0])>0.0) {
-            dion*=SQR(lam_L1/lam_carr[0]);
-        }
         /* tropospheric corrections */
         if (!tropcorr(obs[i].time,nav,pos,azel+i*2,
                       iter>0?opt->tropopt:TROPOPT_SAAS,&dtrp,&vtrp)) {
@@ -261,9 +293,10 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         vsat[i]=1; resp[i]=v[nv]; (*ns)++;
         
         /* error variance */
-        var[nv++]=varerr(opt,azel[1+i*2],sys)+vare[i]+vmeas+vion+vtrp;
-        
-        trace(4,"sat=%2d azel=%5.1f %4.1f res=%7.3f sig=%5.3f\n",obs[i].sat,
+		/*var[nv++]=varerr(opt,azel[1+i*2],sys)+vare[i]+vmeas+vion+vtrp; */
+		var[nv++]=varerrYQ(opt,azel[1+i*2],sys)+vare[i]+vmeas+vion+vtrp;
+
+        RTKtrace(4,"sat=%2d azel=%5.1f %4.1f res=%7.3f sig=%5.3f\n",obs[i].sat,
               azel[i*2]*R2D,azel[1+i*2]*R2D,resp[i],sqrt(var[nv-1]));
     }
     /* constraint to avoid rank-deficient */
@@ -283,7 +316,7 @@ static int valsol(const double *azel, const int *vsat, int n,
     double azels[MAXOBS*2],dop[4],vv;
     int i,ns;
     
-    trace(3,"valsol  : n=%d nv=%d\n",n,nv);
+    RTKtrace(3,"valsol  : n=%d nv=%d\n",n,nv);
     
     /* chi-square validation of residuals */
     vv=dot(v,v,nv);
@@ -314,7 +347,7 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
     double x[NX]={0},dx[NX],Q[NX*NX],*v,*H,*var,sig;
     int i,j,k,info,stat,nv,ns;
     
-    trace(3,"estpos  : n=%d\n",n);
+    RTKtrace(3,"estpos  : n=%d\n",n);
     
     v=mat(n+4,1); H=mat(NX,n+4); var=mat(n+4,1);
     
@@ -385,7 +418,7 @@ static int raim_fde(const obsd_t *obs, int n, const double *rs,
     double *rs_e,*dts_e,*vare_e,*azel_e,*resp_e,rms_e,rms=100.0;
     int i,j,k,nvsat,stat=0,*svh_e,*vsat_e,sat=0;
     
-    trace(3,"raim_fde: %s n=%2d\n",time_str(obs[0].time,0),n);
+    RTKtrace(3,"raim_fde: %s n=%2d\n",time_str(obs[0].time,0),n);
     
     if (!(obs_e=(obsd_t *)malloc(sizeof(obsd_t)*n))) return 0;
     rs_e = mat(6,n); dts_e = mat(2,n); vare_e=mat(1,n); azel_e=zeros(2,n);
@@ -405,7 +438,7 @@ static int raim_fde(const obsd_t *obs, int n, const double *rs,
         /* estimate receiver position without a satellite */
         if (!estpos(obs_e,n-1,rs_e,dts_e,vare_e,svh_e,nav,opt,&sol_e,azel_e,
                     vsat_e,resp_e,msg_e)) {
-            trace(3,"raim_fde: exsat=%2d (%s)\n",obs[i].sat,msg);
+            RTKtrace(3,"raim_fde: exsat=%2d (%s)\n",obs[i].sat,msg);
             continue;
         }
         for (j=nvsat=0,rms_e=0.0;j<n-1;j++) {
@@ -414,13 +447,13 @@ static int raim_fde(const obsd_t *obs, int n, const double *rs,
             nvsat++;
         }
         if (nvsat<5) {
-            trace(3,"raim_fde: exsat=%2d lack of satellites nvsat=%2d\n",
+            RTKtrace(3,"raim_fde: exsat=%2d lack of satellites nvsat=%2d\n",
                   obs[i].sat,nvsat);
             continue;
         }
         rms_e=sqrt(rms_e/nvsat);
         
-        trace(3,"raim_fde: exsat=%2d rms=%8.3f\n",obs[i].sat,rms_e);
+        RTKtrace(3,"raim_fde: exsat=%2d rms=%8.3f\n",obs[i].sat,rms_e);
         
         if (rms_e>rms) continue;
         
@@ -440,7 +473,7 @@ static int raim_fde(const obsd_t *obs, int n, const double *rs,
     }
     if (stat) {
         time2str(obs[0].time,tstr,2); satno2id(sat,name);
-        trace(2,"%s: %s excluded by raim\n",tstr+11,name);
+        RTKtrace(2,"%s: %s excluded by raim\n",tstr+11,name);
     }
     free(obs_e);
     free(rs_e ); free(dts_e ); free(vare_e); free(azel_e);
@@ -455,7 +488,7 @@ static int resdop(const obsd_t *obs, int n, const double *rs, const double *dts,
     double lam,rate,pos[3],E[9],a[3],e[3],vs[3],cosel;
     int i,j,nv=0;
     
-    trace(3,"resdop  : n=%d\n",n);
+    RTKtrace(3,"resdop  : n=%d\n",n);
     
     ecef2pos(rr,pos); xyz2enu(pos,E);
     
@@ -498,7 +531,7 @@ static void estvel(const obsd_t *obs, int n, const double *rs, const double *dts
     double x[4]={0},dx[4],Q[16],*v,*H;
     int i,j,nv;
     
-    trace(3,"estvel  : n=%d\n",n);
+    RTKtrace(3,"estvel  : n=%d\n",n);
     
     v=mat(n,1); H=mat(4,n);
     
@@ -548,7 +581,7 @@ extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
     
     if (n<=0) {strcpy(msg,"no observation data"); return 0;}
     
-    trace(3,"pntpos  : tobs=%s n=%d\n",time_str(obs[0].time,3),n);
+    RTKtrace(3,"pntpos  : tobs=%s n=%d\n",time_str(obs[0].time,3),n);
     
     sol->time=obs[0].time; msg[0]='\0';
     

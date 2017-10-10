@@ -87,7 +87,7 @@ static int decode_lexraw(raw_t *raw)
     cpuid=U1(p);       p+=1;
     clk  =R8(p)*0.001; p+=8;
     
-    trace(3,"decode_lexraw: len=%d ncpu=%d cpuid=%d clk=%.3f\n",raw->len,ncpu,
+    RTKtrace(3,"decode_lexraw: len=%d ncpu=%d cpuid=%d clk=%.3f\n",raw->len,ncpu,
           cpuid,clk);
     
     for (i=0;i<17&&p+38<=raw->buff+raw->len-4;i++) {
@@ -115,13 +115,13 @@ static int decode_lexraw(raw_t *raw)
             raw->lexmsg.snr=(unsigned char)(cn0*0.04+0.5);
             raw->lexmsg.ttt=ttt;
         }
-        trace(4,"satid=%3d nsig=%d type=0x%02X node=%d prn=%3d stat=%d\n",
+        RTKtrace(4,"satid=%3d nsig=%d type=0x%02X node=%d prn=%3d stat=%d\n",
               satid,nsig,type,node,prn,stat);
-        trace(4,"cn0=%4.1f pr=%13.3f dop=%8.3f adr=%13.3f acc=%6.3f ttt=%9.3f\n",
+        RTKtrace(4,"cn0=%4.1f pr=%13.3f dop=%8.3f adr=%13.3f acc=%6.3f ttt=%9.3f\n",
               cn0*0.01,pr,dop,adr,acc,ttt*0.001);
         
         if (!(sat=satno(SYS_QZS,prn))) {
-            trace(2,"lexraw sat number error: prn=%d\n",prn);
+            RTKtrace(2,"lexraw sat number error: prn=%d\n",prn);
             continue;
         }
         raw->obs.data[n].time=raw->time;
@@ -137,7 +137,7 @@ static int decode_lexraw(raw_t *raw)
             
             lli=0;
             if (ttt<=0.0||ttt*0.001<raw->lockt[sat-1][3]) {
-                trace(2,"lexraw loss of lock: t=%s ttt=%6.0f->%6.0f\n",
+                RTKtrace(2,"lexraw loss of lock: t=%s ttt=%6.0f->%6.0f\n",
                       time_str(raw->time,3),raw->lockt[sat-1][3],ttt*0.001);
                 lli=1;
             }
@@ -166,7 +166,7 @@ static int decode_lexmsg(raw_t *raw)
     unsigned char *p=raw->buff+16;
     
     if (raw->len<276) {
-        trace(2,"lexr lexmsg length error: len=%d\n",raw->len);
+        RTKtrace(2,"lexr lexmsg length error: len=%d\n",raw->len);
         return -1;
     }
     sat =U1(p); p+=1; /* satellite id */
@@ -175,11 +175,11 @@ static int decode_lexmsg(raw_t *raw)
     prn =U1(p); p+=1; /* prn number */
     err =U2(p); p+=2; /* err status */
     
-    trace(3,"decode_lexmsg: len=%d sat=%d ch=%d sig=%d prn=%d err=%d\n",
+    RTKtrace(3,"decode_lexmsg: len=%d sat=%d ch=%d sig=%d prn=%d err=%d\n",
           raw->len,sat,ch,sig,prn,err);
     
     if (err&1) {
-        trace(2,"lex message decode error: sat=%d ch=%d prn=%d err=%02X\n",
+        RTKtrace(2,"lex message decode error: sat=%d ch=%d prn=%d err=%02X\n",
               sat,ch,prn,err);
         return -1;
     }
@@ -191,11 +191,11 @@ static int decode_lexmsg(raw_t *raw)
     alert =getbitu(p,i, 1); i+= 1; /* alert flag */
     
     if (preamb!=LEXFRMPREAMB) {
-        trace(2,"lex message preamble error: preamb=%08X\n",preamb);
+        RTKtrace(2,"lex message preamble error: preamb=%08X\n",preamb);
         return -1;
     }
     if (prn!=prnmsg) {
-        trace(2,"lex message prn inconsistent: prn=%d %d\n",prn,prnmsg);
+        RTKtrace(2,"lex message prn inconsistent: prn=%d %d\n",prn,prnmsg);
         return -1;
     }
     raw->lexmsg.prn=prn;
@@ -208,8 +208,8 @@ static int decode_lexmsg(raw_t *raw)
     }
     raw->lexmsg.msg[211]&=0xFE;
     
-    trace(4,"lexmsg: prn=%d type=%d aleart=%d\n",prn,type,alert);
-    trace(4,"lexmsg: msg="); traceb(4,msg.msg,212);
+    RTKtrace(4,"lexmsg: prn=%d type=%d aleart=%d\n",prn,type,alert);
+    RTKtrace(4,"lexmsg: msg="); traceb(4,msg.msg,212);
     return 31;
 }
 /* decode lex raw message ---------------------------------------------------*/
@@ -231,7 +231,7 @@ static int decode_lexr(raw_t *raw)
     week=U2(raw->buff+14);
     raw->time=gpst2time(week,tow);
     
-    trace(3,"decode_lexr: type=%04X len=%3d stat=%08X time=%s\n",type,raw->len,
+    RTKtrace(3,"decode_lexr: type=%04X len=%3d stat=%08X time=%s\n",type,raw->len,
           stat,time_str(raw->time,3));
     
     if (raw->outtype) {
@@ -259,7 +259,7 @@ static int sync_lexr(unsigned char *buff, unsigned char data)
 *-----------------------------------------------------------------------------*/
 extern int input_lexr(raw_t *raw, unsigned char data)
 {
-    trace(5,"input_lexr: data=%02x\n",data);
+    RTKtrace(5,"input_lexr: data=%02x\n",data);
     
     /* synchronize frame */
     if (raw->nbyte==0) {
@@ -270,7 +270,7 @@ extern int input_lexr(raw_t *raw, unsigned char data)
 #if 0 /* omitted ver.2.4.1 */
     /* replpace 0xAAAA by 0xAA (ref [1] 4.1.4) */
     if (!raw->flag&&data==0xAA&&raw->buff[raw->nbyte-1]==0xAA) {
-        trace(3,"replace 0xAAAA by 0xAA\n");
+        RTKtrace(3,"replace 0xAAAA by 0xAA\n");
         raw->flag=1;
         return 0;
     }
@@ -281,7 +281,7 @@ extern int input_lexr(raw_t *raw, unsigned char data)
     if (raw->nbyte==6) {
         raw->len=U2(raw->buff+4);
         if (raw->len>MAXRAWLEN) {
-            trace(2,"rcvlex message length error: len=%d\n",raw->len);
+            RTKtrace(2,"rcvlex message length error: len=%d\n",raw->len);
             raw->nbyte=0; raw->buff[0]=0;
             return -1;
         }
@@ -290,7 +290,7 @@ extern int input_lexr(raw_t *raw, unsigned char data)
     
     /* check crc */
     if (crc32r(raw->buff,raw->len-4)!=U4(raw->buff+raw->len-4)) {
-        trace(2,"rcvlex message crc error: len=%d\n",raw->len);
+        RTKtrace(2,"rcvlex message crc error: len=%d\n",raw->len);
         raw->nbyte=0; raw->buff[0]=0;
         return -1;
     }
@@ -309,7 +309,7 @@ extern int input_lexrf(raw_t *raw, FILE *fp)
 {
     int i,data,ret;
     
-    trace(4,"input_lexrf:\n");
+    RTKtrace(4,"input_lexrf:\n");
     
     for (i=0;i<4096;i++) {
         if ((data=fgetc(fp))==EOF) return -2;
@@ -358,7 +358,7 @@ extern int gen_lexr(const char *msg, unsigned char *buff)
     unsigned char data[32]={0},*q=data;
     int i,len,narg=0;
     
-    trace(4,"gen_lexr: msg=%s\n",msg);
+    RTKtrace(4,"gen_lexr: msg=%s\n",msg);
     
     strcpy(mbuff,msg);
     
@@ -411,10 +411,10 @@ extern int gen_lexr(const char *msg, unsigned char *buff)
         len=genmsg(buff,0x8052,data,1);
     }
     else {
-        trace(2,"unknown lexr command: msg=%s\n",args[0]);
+        RTKtrace(2,"unknown lexr command: msg=%s\n",args[0]);
         return 0;
     }
-    trace(5,"gen_lexr: buff=\n"); traceb(5,buff,len);
+    RTKtrace(5,"gen_lexr: buff=\n"); traceb(5,buff,len);
     return len;
 }
 #endif /* EXTLEX */

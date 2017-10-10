@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------------------
 * solution.c : solution functions
 *
-*          Copyright (C) 2007-2015 by T.TAKASU, All rights reserved.
+*          Copyright (C) 2007-2013 by T.TAKASU, All rights reserved.
 *
 * reference :
 *     [1] National Marine Electronic Association and International Marine
@@ -37,8 +37,6 @@
 *           2012/02/05  1.10 fix bug on output nmea gpgsv
 *           2013/02/18  1.11 support nmea GLGSA,GAGSA,GLCSV,GACSV sentence
 *           2013/09/01  1.12 fix bug on presentation of nmea time tag
-*           2015/02/11  1.13 fix bug on checksum of $GLGSA and $GAGSA
-*                            fix bug on satellite id of $GAGSA
 *-----------------------------------------------------------------------------*/
 #include <ctype.h>
 #include "rtklib.h"
@@ -129,7 +127,7 @@ static int decode_nmearmc(char **val, int n, sol_t *sol)
     char act=' ',ns='N',ew='E',mew='E',mode='A';
     int i;
     
-    trace(4,"decode_nmearmc: n=%d\n",n);
+    RTKtrace(4,"decode_nmearmc: n=%d\n",n);
     
     for (i=0;i<n;i++) {
         switch (i) {
@@ -150,7 +148,7 @@ static int decode_nmearmc(char **val, int n, sol_t *sol)
         }
     }
     if ((act!='A'&&act!='V')||(ns!='N'&&ns!='S')||(ew!='E'&&ew!='W')) {
-        trace(2,"invalid nmea gprmc format\n");
+        RTKtrace(2,"invalid nmea gprmc format\n");
         return 0;
     }
     pos[0]=(ns=='S'?-1.0:1.0)*dmm2deg(lat)*D2R;
@@ -165,7 +163,7 @@ static int decode_nmearmc(char **val, int n, sol_t *sol)
     
     sol->type=0; /* postion type = xyz */
     
-    trace(5,"decode_nmearmc: %s rr=%.3f %.3f %.3f stat=%d ns=%d vel=%.2f dir=%.0f ang=%.0f mew=%c mode=%c\n",
+    RTKtrace(5,"decode_nmearmc: %s rr=%.3f %.3f %.3f stat=%d ns=%d vel=%.2f dir=%.0f ang=%.0f mew=%c mode=%c\n",
           time_str(sol->time,0),sol->rr[0],sol->rr[1],sol->rr[2],sol->stat,sol->ns,
           vel,dir,ang,mew,mode);
     
@@ -180,7 +178,7 @@ static int decode_nmeagga(char **val, int n, sol_t *sol)
     char ns='N',ew='E',ua=' ',um=' ';
     int i,solq=0,nrcv=0;
     
-    trace(4,"decode_nmeagga: n=%d\n",n);
+    RTKtrace(4,"decode_nmeagga: n=%d\n",n);
     
     for (i=0;i<n;i++) {
         switch (i) {
@@ -199,11 +197,11 @@ static int decode_nmeagga(char **val, int n, sol_t *sol)
         }
     }
     if ((ns!='N'&&ns!='S')||(ew!='E'&&ew!='W')) {
-        trace(2,"invalid nmea gpgga format\n");
+        RTKtrace(2,"invalid nmea gpgga format\n");
         return 0;
     }
     if (sol->time.time==0.0) {
-        trace(2,"no date info for nmea gpgga\n");
+        RTKtrace(2,"no date info for nmea gpgga\n");
         return 0;
     }
     pos[0]=(ns=='N'?1.0:-1.0)*dmm2deg(lat)*D2R;
@@ -223,7 +221,7 @@ static int decode_nmeagga(char **val, int n, sol_t *sol)
     
     sol->type=0; /* postion type = xyz */
     
-    trace(5,"decode_nmeagga: %s rr=%.3f %.3f %.3f stat=%d ns=%d hdop=%.1f ua=%c um=%c\n",
+    RTKtrace(5,"decode_nmeagga: %s rr=%.3f %.3f %.3f stat=%d ns=%d hdop=%.1f ua=%c um=%c\n",
           time_str(sol->time,0),sol->rr[0],sol->rr[1],sol->rr[2],sol->stat,sol->ns,
           hdop,ua,um);
     
@@ -235,7 +233,7 @@ static int decode_nmea(char *buff, sol_t *sol)
     char *p,*q,*val[MAXFIELD];
     int n=0;
     
-    trace(4,"decode_nmea: buff=%s\n",buff);
+    RTKtrace(4,"decode_nmea: buff=%s\n",buff);
     
     /* parse fields */
     for (p=buff;*p&&n<MAXFIELD;p=q+1) {
@@ -260,7 +258,7 @@ static char *decode_soltime(char *buff, const solopt_t *opt, gtime_t *time)
     char *p,*q,s[64]=" ";
     int n,len;
     
-    trace(4,"decode_soltime:\n");
+    RTKtrace(4,"decode_soltime:\n");
     
     if (!strcmp(opt->sep,"\\t")) strcpy(s,"\t");
     else if (*opt->sep) strcpy(s,opt->sep);
@@ -310,7 +308,7 @@ static int decode_solxyz(char *buff, const solopt_t *opt, sol_t *sol)
     int i=0,j,n;
     const char *sep=opt2sep(opt);
     
-    trace(4,"decode_solxyz:\n");
+    RTKtrace(4,"decode_solxyz:\n");
     
     if ((n=tonum(buff,sep,val))<3) return 0;
     
@@ -345,7 +343,7 @@ static int decode_solllh(char *buff, const solopt_t *opt, sol_t *sol)
     int i=0,n;
     const char *sep=opt2sep(opt);
     
-    trace(4,"decode_solllh:\n");
+    RTKtrace(4,"decode_solllh:\n");
     
     n=tonum(buff,sep,val);
     
@@ -392,7 +390,7 @@ static int decode_solenu(char *buff, const solopt_t *opt, sol_t *sol)
     int i=0,j,n;
     const char *sep=opt2sep(opt);
     
-    trace(4,"decode_solenu:\n");
+    RTKtrace(4,"decode_solenu:\n");
     
     if ((n=tonum(buff,sep,val))<3) return 0;
     
@@ -426,7 +424,7 @@ static int decode_solgsi(char *buff, const solopt_t *opt, sol_t *sol)
     double val[MAXFIELD];
     int i=0,j;
     
-    trace(4,"decode_solgsi:\n");
+    RTKtrace(4,"decode_solgsi:\n");
     
     if (tonum(buff," ",val)<3) return 0;
     
@@ -442,7 +440,7 @@ static int decode_solpos(char *buff, const solopt_t *opt, sol_t *sol)
     sol_t sol0={{0}};
     char *p=buff;
     
-    trace(4,"decode_solpos: buff=%s\n",buff);
+    RTKtrace(4,"decode_solpos: buff=%s\n",buff);
     
     *sol=sol0;
     
@@ -466,7 +464,7 @@ static void decode_refpos(char *buff, const solopt_t *opt, double *rb)
     int i,n;
     const char *sep=opt2sep(opt);
     
-    trace(3,"decode_refpos: buff=%s\n",buff);
+    RTKtrace(3,"decode_refpos: buff=%s\n",buff);
     
     if ((n=tonum(buff,sep,val))<3) return;
     
@@ -491,7 +489,7 @@ static int decode_sol(char *buff, const solopt_t *opt, sol_t *sol, double *rb)
 {
     char *p;
     
-    trace(4,"decode_sol: buff=%s\n",buff);
+    RTKtrace(4,"decode_sol: buff=%s\n",buff);
     
     if (!strncmp(buff,COMMENTH,1)) { /* reference position */
         if (!strstr(buff,"ref pos")&&!strstr(buff,"slave pos")) return 0;
@@ -515,7 +513,7 @@ static void decode_solopt(char *buff, solopt_t *opt)
 {
     char *p;
     
-    trace(4,"decode_solhead: buff=%s\n",buff);
+    RTKtrace(4,"decode_solhead: buff=%s\n",buff);
     
     if (strncmp(buff,COMMENTH,1)&&strncmp(buff,"+",1)) return;
     
@@ -560,7 +558,7 @@ static void readsolopt(FILE *fp, solopt_t *opt)
     char buff[MAXSOLMSG+1];
     int i;
     
-    trace(3,"readsolopt:\n");
+    RTKtrace(3,"readsolopt:\n");
     
     for (i=0;fgets(buff,sizeof(buff),fp)&&i<100;i++) { /* only 100 lines */
         
@@ -584,7 +582,7 @@ extern int inputsol(unsigned char data, gtime_t ts, gtime_t te, double tint,
     sol_t sol={{0}};
     int stat;
     
-    trace(4,"inputsol: data=0x%02x\n",data);
+    RTKtrace(4,"inputsol: data=0x%02x\n",data);
     
     sol.time=solbuf->time;
     
@@ -599,7 +597,7 @@ extern int inputsol(unsigned char data, gtime_t ts, gtime_t te, double tint,
     
     /* check disconnect message */
     if (!strcmp((char *)solbuf->buff,MSG_DISCONN)) {
-        trace(3,"disconnect received\n");
+        RTKtrace(3,"disconnect received\n");
         return -1;
     }
     /* decode solution */
@@ -618,7 +616,7 @@ static int readsoldata(FILE *fp, gtime_t ts, gtime_t te, double tint, int qflag,
 {
     int c;
     
-    trace(3,"readsoldata:\n");
+    RTKtrace(3,"readsoldata:\n");
     
     while ((c=fgetc(fp))!=EOF) {
         
@@ -639,12 +637,12 @@ static int sort_solbuf(solbuf_t *solbuf)
 {
     sol_t *solbuf_data;
     
-    trace(4,"sort_solbuf: n=%d\n",solbuf->n);
+    RTKtrace(4,"sort_solbuf: n=%d\n",solbuf->n);
     
     if (solbuf->n<=0) return 0;
     
     if (!(solbuf_data=(sol_t *)realloc(solbuf->data,sizeof(sol_t)*solbuf->n))) {
-        trace(1,"sort_solbuf: memory allocation error\n");
+        RTKtrace(1,"sort_solbuf: memory allocation error\n");
         free(solbuf->data); solbuf->data=NULL; solbuf->n=solbuf->nmax=0;
         return 0;
     }
@@ -673,13 +671,13 @@ extern int readsolt(char *files[], int nfile, gtime_t ts, gtime_t te,
     solopt_t opt=solopt_default;
     int i;
     
-    trace(3,"readsolt: nfile=%d\n",nfile);
+    RTKtrace(3,"readsolt: nfile=%d\n",nfile);
     
     initsolbuf(solbuf,0,0);
     
     for (i=0;i<nfile;i++) {
         if (!(fp=fopen(files[i],"rb"))) {
-            trace(1,"readsolt: file open error %s\n",files[i]);
+            RTKtrace(1,"readsolt: file open error %s\n",files[i]);
             continue;
         }
         /* read solution options in header */
@@ -688,7 +686,7 @@ extern int readsolt(char *files[], int nfile, gtime_t ts, gtime_t te,
         
         /* read solution data */
         if (!readsoldata(fp,ts,te,tint,qflag,&opt,solbuf)) {
-            trace(1,"readsolt: no solution in %s\n",files[i]);
+            RTKtrace(1,"readsolt: no solution in %s\n",files[i]);
         }
         fclose(fp);
     }
@@ -698,7 +696,7 @@ extern int readsol(char *files[], int nfile, solbuf_t *sol)
 {
     gtime_t time={0};
     
-    trace(3,"readsol: nfile=%d\n",nfile);
+    RTKtrace(3,"readsol: nfile=%d\n",nfile);
     
     return readsolt(files,nfile,time,time,0.0,0,sol);
 }
@@ -712,7 +710,7 @@ extern int addsol(solbuf_t *solbuf, const sol_t *sol)
 {
     sol_t *solbuf_data;
     
-    trace(4,"addsol:\n");
+    RTKtrace(4,"addsol:\n");
     
     if (solbuf->cyclic) { /* ring buffer */
         if (solbuf->nmax<=1) return 0;
@@ -728,7 +726,7 @@ extern int addsol(solbuf_t *solbuf, const sol_t *sol)
     if (solbuf->n>=solbuf->nmax) {
         solbuf->nmax=solbuf->nmax==0?8192:solbuf->nmax*2;
         if (!(solbuf_data=(sol_t *)realloc(solbuf->data,sizeof(sol_t)*solbuf->nmax))) {
-            trace(1,"addsol: memory allocation error\n");
+            RTKtrace(1,"addsol: memory allocation error\n");
             free(solbuf->data); solbuf->data=NULL; solbuf->n=solbuf->nmax=0;
             return 0;
         }
@@ -745,7 +743,7 @@ extern int addsol(solbuf_t *solbuf, const sol_t *sol)
 *-----------------------------------------------------------------------------*/
 extern sol_t *getsol(solbuf_t *solbuf, int index)
 {
-    trace(4,"getsol: index=%d\n",index);
+    RTKtrace(4,"getsol: index=%d\n",index);
     
     if (index<0||solbuf->n<=index) return NULL;
     if ((index=solbuf->start+index)>=solbuf->nmax) {
@@ -764,7 +762,7 @@ extern void initsolbuf(solbuf_t *solbuf, int cyclic, int nmax)
 {
     gtime_t time0={0};
     
-    trace(3,"initsolbuf: cyclic=%d nmax=%d\n",cyclic,nmax);
+    RTKtrace(3,"initsolbuf: cyclic=%d nmax=%d\n",cyclic,nmax);
     
     solbuf->n=solbuf->nmax=solbuf->start=solbuf->end=0;
     solbuf->cyclic=cyclic;
@@ -773,7 +771,7 @@ extern void initsolbuf(solbuf_t *solbuf, int cyclic, int nmax)
     if (cyclic) {
         if (nmax<=2) nmax=2;
         if (!(solbuf->data=malloc(sizeof(sol_t)*nmax))) {
-            trace(1,"initsolbuf: memory allocation error\n");
+            RTKtrace(1,"initsolbuf: memory allocation error\n");
             return;
         }
         solbuf->nmax=nmax;
@@ -786,7 +784,7 @@ extern void initsolbuf(solbuf_t *solbuf, int cyclic, int nmax)
 *-----------------------------------------------------------------------------*/
 extern void freesolbuf(solbuf_t *solbuf)
 {
-    trace(3,"freesolbuf: n=%d\n",solbuf->n);
+    RTKtrace(3,"freesolbuf: n=%d\n",solbuf->n);
     
     free(solbuf->data);
     solbuf->n=solbuf->nmax=solbuf->start=solbuf->end=0;
@@ -794,7 +792,7 @@ extern void freesolbuf(solbuf_t *solbuf)
 }
 extern void freesolstatbuf(solstatbuf_t *solstatbuf)
 {
-    trace(3,"freesolstatbuf: n=%d\n",solstatbuf->n);
+    RTKtrace(3,"freesolstatbuf: n=%d\n",solstatbuf->n);
     
     solstatbuf->n=solstatbuf->nmax=0;
     free(solstatbuf->data);
@@ -812,12 +810,12 @@ static int sort_solstat(solstatbuf_t *statbuf)
 {
     solstat_t *statbuf_data;
     
-    trace(4,"sort_solstat: n=%d\n",statbuf->n);
+    RTKtrace(4,"sort_solstat: n=%d\n",statbuf->n);
     
     if (statbuf->n<=0) return 0;
     
     if (!(statbuf_data=realloc(statbuf->data,sizeof(solstat_t)*statbuf->n))) {
-        trace(1,"sort_solstat: memory allocation error\n");
+        RTKtrace(1,"sort_solstat: memory allocation error\n");
         free(statbuf->data); statbuf->data=NULL; statbuf->n=statbuf->nmax=0;
         return 0;
     }
@@ -834,7 +832,7 @@ static int decode_solstat(char *buff, solstat_t *stat)
     int n,week,sat,frq,vsat,snr,fix,slip,lock,outc,slipc,rejc;
     char id[32]="",*p;
     
-    trace(4,"decode_solstat: buff=%s\n",buff);
+    RTKtrace(4,"decode_solstat: buff=%s\n",buff);
     
     if (strstr(buff,"$SAT")!=buff) return 0;
     
@@ -845,11 +843,11 @@ static int decode_solstat(char *buff, solstat_t *stat)
              &lock,&outc,&slipc,&rejc);
     
     if (n<15) {
-        trace(2,"invalid format of solution status: %s\n",buff);
+        RTKtrace(2,"invalid format of solution status: %s\n",buff);
         return 0;
     }
     if ((sat=satid2no(id))<=0) {
-        trace(2,"invalid satellite in solution status: %s\n",id);
+        RTKtrace(2,"invalid satellite in solution status: %s\n",id);
         return 0;
     }
     *stat=stat0;
@@ -873,13 +871,13 @@ static void addsolstat(solstatbuf_t *statbuf, const solstat_t *stat)
 {
     solstat_t *statbuf_data;
     
-    trace(4,"addsolstat:\n");
+    RTKtrace(4,"addsolstat:\n");
     
     if (statbuf->n>=statbuf->nmax) {
         statbuf->nmax=statbuf->nmax==0?8192:statbuf->nmax*2;
         if (!(statbuf_data=(solstat_t *)realloc(statbuf->data,sizeof(solstat_t)*
                                                 statbuf->nmax))) {
-            trace(1,"addsolstat: memory allocation error\n");
+            RTKtrace(1,"addsolstat: memory allocation error\n");
             free(statbuf->data); statbuf->data=NULL; statbuf->n=statbuf->nmax=0;
             return;
         }
@@ -894,7 +892,7 @@ static int readsolstatdata(FILE *fp, gtime_t ts, gtime_t te, double tint,
     solstat_t stat={{0}};
     char buff[MAXSOLMSG+1];
     
-    trace(3,"readsolstatdata:\n");
+    RTKtrace(3,"readsolstatdata:\n");
     
     while (fgets(buff,sizeof(buff),fp)) {
         
@@ -925,7 +923,7 @@ extern int readsolstatt(char *files[], int nfile, gtime_t ts, gtime_t te,
     char path[1024];
     int i;
     
-    trace(3,"readsolstatt: nfile=%d\n",nfile);
+    RTKtrace(3,"readsolstatt: nfile=%d\n",nfile);
     
     statbuf->n=statbuf->nmax=0;
     statbuf->data=NULL;
@@ -933,12 +931,12 @@ extern int readsolstatt(char *files[], int nfile, gtime_t ts, gtime_t te,
     for (i=0;i<nfile;i++) {
         sprintf(path,"%s.stat",files[i]);
         if (!(fp=fopen(path,"r"))) {
-            trace(1,"readsolstatt: file open error %s\n",path);
+            RTKtrace(1,"readsolstatt: file open error %s\n",path);
             continue;
         }
         /* read solution status data */
         if (!readsolstatdata(fp,ts,te,tint,statbuf)) {
-            trace(1,"readsolt: no solution in %s\n",path);
+            RTKtrace(1,"readsolt: no solution in %s\n",path);
         }
         fclose(fp);
     }
@@ -948,7 +946,7 @@ extern int readsolstat(char *files[], int nfile, solstatbuf_t *statbuf)
 {
     gtime_t time={0};
     
-    trace(3,"readsolstat: nfile=%d\n",nfile);
+    RTKtrace(3,"readsolstat: nfile=%d\n",nfile);
     
     return readsolstatt(files,nfile,time,time,0.0,statbuf);
 }
@@ -959,7 +957,7 @@ static int outecef(unsigned char *buff, const char *s, const sol_t *sol,
     const char *sep=opt2sep(opt);
     char *p=(char *)buff;
     
-    trace(3,"outecef:\n");
+    RTKtrace(3,"outecef:\n");
     
     p+=sprintf(p,"%s%s%14.4f%s%14.4f%s%14.4f%s%3d%s%3d%s%8.4f%s%8.4f%s%8.4f%s%8.4f%s%8.4f%s%8.4f%s%6.2f%s%6.1f\n",
                s,sep,sol->rr[0],sep,sol->rr[1],sep,sol->rr[2],sep,sol->stat,sep,
@@ -976,7 +974,7 @@ static int outpos(unsigned char *buff, const char *s, const sol_t *sol,
     const char *sep=opt2sep(opt);
     char *p=(char *)buff;
     
-    trace(3,"outpos  :\n");
+    RTKtrace(3,"outpos  :\n");
     
     ecef2pos(sol->rr,pos);
     soltocov(sol,P);
@@ -1007,7 +1005,7 @@ static int outenu(unsigned char *buff, const char *s, const sol_t *sol,
     const char *sep=opt2sep(opt);
     char *p=(char *)buff;
     
-    trace(3,"outenu  :\n");
+    RTKtrace(3,"outenu  :\n");
     
     for (i=0;i<3;i++) rr[i]=sol->rr[i]-rb[i];
     ecef2pos(rb,pos);
@@ -1028,7 +1026,7 @@ extern int outnmea_rmc(unsigned char *buff, const sol_t *sol)
     double ep[6],pos[3],enuv[3],dms1[3],dms2[3],vel,dir,amag=0.0;
     char *p=(char *)buff,*q,sum,*emag="E";
     
-    trace(3,"outnmea_rmc:\n");
+    RTKtrace(3,"outnmea_rmc:\n");
     
     if (sol->stat<=SOLQ_NONE) {
         p+=sprintf(p,"$GPRMC,,,,,,,,,,,,");
@@ -1067,7 +1065,7 @@ extern int outnmea_gga(unsigned char *buff, const sol_t *sol)
     int solq;
     char *p=(char *)buff,*q,sum;
     
-    trace(3,"outnmea_gga:\n");
+    RTKtrace(3,"outnmea_gga:\n");
     
     if (sol->stat<=SOLQ_NONE) {
         p+=sprintf(p,"$GPGGA,,,,,,,,,,,,,,");
@@ -1092,15 +1090,15 @@ extern int outnmea_gga(unsigned char *buff, const sol_t *sol)
     p+=sprintf(p,"*%02X%c%c",sum,0x0D,0x0A);
     return p-(char *)buff;
 }
-/* output solution in the form of nmea GSA sentences -------------------------*/
+/* output solution in the form of nmea GSA sentence --------------------------*/
 extern int outnmea_gsa(unsigned char *buff, const sol_t *sol,
                        const ssat_t *ssat)
 {
     double azel[MAXSAT*2],dop[4];
     int i,sat,sys,nsat,prn[MAXSAT];
-    char *p=(char *)buff,*q,*s,sum;
+    char *p=(char *)buff,*q,sum;
     
-    trace(3,"outnmea_gsa:\n");
+    RTKtrace(3,"outnmea_gsa:\n");
     
     if (sol->stat<=SOLQ_NONE) {
         p+=sprintf(p,"$GPGSA,A,1,,,,,,,,,,,,,,,");
@@ -1118,7 +1116,6 @@ extern int outnmea_gsa(unsigned char *buff, const sol_t *sol,
         nsat++;
     }
     if (nsat>0) {
-        s=p;
         p+=sprintf(p,"$GPGSA,A,%d",sol->stat<=0?1:3);
         for (i=0;i<12;i++) {
             if (i<nsat) p+=sprintf(p,",%02d",prn[i]);
@@ -1126,7 +1123,7 @@ extern int outnmea_gsa(unsigned char *buff, const sol_t *sol,
         }
         dops(nsat,azel,0.0,dop);
         p+=sprintf(p,",%3.1f,%3.1f,%3.1f,1",dop[1],dop[2],dop[3]);
-        for (q=s+1,sum=0;*q;q++) sum^=*q; /* check-sum */
+        for (q=(char *)buff+1,sum=0;*q;q++) sum^=*q; /* check-sum */
         p+=sprintf(p,"*%02X%c%c",sum,0x0D,0x0A);
     }
     /* GLGSA: glonass */
@@ -1137,7 +1134,6 @@ extern int outnmea_gsa(unsigned char *buff, const sol_t *sol,
         nsat++;
     }
     if (nsat>0) {
-        s=p;
         p+=sprintf(p,"$GLGSA,A,%d",sol->stat<=0?1:3);
         for (i=0;i<12;i++) {
             if (i<nsat) p+=sprintf(p,",%02d",prn[i]+64);
@@ -1145,7 +1141,7 @@ extern int outnmea_gsa(unsigned char *buff, const sol_t *sol,
         }
         dops(nsat,azel,0.0,dop);
         p+=sprintf(p,",%3.1f,%3.1f,%3.1f,2",dop[1],dop[2],dop[3]);
-        for (q=s+1,sum=0;*q;q++) sum^=*q; /* check-sum */
+        for (q=(char *)buff+1,sum=0;*q;q++) sum^=*q; /* check-sum */
         p+=sprintf(p,"*%02X%c%c",sum,0x0D,0x0A);
     }
     /* GAGSA: galileo */
@@ -1156,15 +1152,14 @@ extern int outnmea_gsa(unsigned char *buff, const sol_t *sol,
         nsat++;
     }
     if (nsat>0) {
-        s=p;
         p+=sprintf(p,"$GAGSA,A,%d",sol->stat<=0?1:3);
         for (i=0;i<12;i++) {
-            if (i<nsat) p+=sprintf(p,",%02d",prn[i]);
+            if (i<nsat) p+=sprintf(p,",%02d",prn[i]+64);
             else        p+=sprintf(p,",");
         }
         dops(nsat,azel,0.0,dop);
         p+=sprintf(p,",%3.1f,%3.1f,%3.1f,3",dop[1],dop[2],dop[3]);
-        for (q=s+1,sum=0;*q;q++) sum^=*q; /* check-sum */
+        for (q=(char *)buff+1,sum=0;*q;q++) sum^=*q; /* check-sum */
         p+=sprintf(p,"*%02X%c%c",sum,0x0D,0x0A);
     }
     return p-(char *)buff;
@@ -1177,7 +1172,7 @@ extern int outnmea_gsv(unsigned char *buff, const sol_t *sol,
     int i,j,k,n,sat,prn,sys,nmsg,sats[MAXSAT];
     char *p=(char *)buff,*q,*s,sum;
     
-    trace(3,"outnmea_gsv:\n");
+    RTKtrace(3,"outnmea_gsv:\n");
     
     if (sol->stat<=SOLQ_NONE) {
         p+=sprintf(p,"$GPGSV,1,1,0,,,,,,,,,,,,,,,,");
@@ -1288,7 +1283,7 @@ extern int outprcopts(unsigned char *buff, const prcopt_t *opt)
     int i;
     char *p=(char *)buff;
     
-    trace(3,"outprcopts:\n");
+    RTKtrace(3,"outprcopts:\n");
     
     p+=sprintf(p,"%s pos mode  : %s\n",COMMENTH,s1[opt->mode]);
     
@@ -1349,7 +1344,7 @@ extern int outsolheads(unsigned char *buff, const solopt_t *opt)
     char *p=(char *)buff;
     int timeu=opt->timeu<0?0:(opt->timeu>20?20:opt->timeu);
     
-    trace(3,"outsolheads:\n");
+    RTKtrace(3,"outsolheads:\n");
     
     if (opt->posf==SOLF_NMEA) return 0;
     
@@ -1408,7 +1403,7 @@ extern int outsols(unsigned char *buff, const sol_t *sol, const double *rb,
     char s[64];
     unsigned char *p=buff;
     
-    trace(3,"outsols :\n");
+    RTKtrace(3,"outsols :\n");
     
     if (opt->posf==SOLF_NMEA) {
         if (opt->nmeaintv[0]<0.0) return 0;
@@ -1456,7 +1451,7 @@ extern int outsolexs(unsigned char *buff, const sol_t *sol, const ssat_t *ssat,
     gtime_t ts={0};
     unsigned char *p=buff;
     
-    trace(3,"outsolexs:\n");
+    RTKtrace(3,"outsolexs:\n");
     
     if (opt->posf==SOLF_NMEA) {
         if (opt->nmeaintv[1]<0.0) return 0;
@@ -1479,7 +1474,7 @@ extern void outprcopt(FILE *fp, const prcopt_t *opt)
     unsigned char buff[MAXSOLMSG+1];
     int n;
     
-    trace(3,"outprcopt:\n");
+    RTKtrace(3,"outprcopt:\n");
     
     if ((n=outprcopts(buff,opt))>0) {
         fwrite(buff,n,1,fp);
@@ -1496,7 +1491,7 @@ extern void outsolhead(FILE *fp, const solopt_t *opt)
     unsigned char buff[MAXSOLMSG+1];
     int n;
     
-    trace(3,"outsolhead:\n");
+    RTKtrace(3,"outsolhead:\n");
     
     if ((n=outsolheads(buff,opt))>0) {
         fwrite(buff,n,1,fp);
@@ -1516,7 +1511,7 @@ extern void outsol(FILE *fp, const sol_t *sol, const double *rb,
     unsigned char buff[MAXSOLMSG+1];
     int n;
     
-    trace(3,"outsol  :\n");
+    RTKtrace(3,"outsol  :\n");
     
     if ((n=outsols(buff,sol,rb,opt))>0) {
         fwrite(buff,n,1,fp);
@@ -1537,7 +1532,7 @@ extern void outsolex(FILE *fp, const sol_t *sol, const ssat_t *ssat,
     unsigned char buff[MAXSOLMSG+1];
     int n;
     
-    trace(3,"outsolex:\n");
+    RTKtrace(3,"outsolex:\n");
     
     if ((n=outsolexs(buff,sol,ssat,opt))>0) {
         fwrite(buff,n,1,fp);

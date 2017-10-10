@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------------------
 * options.c : options functions
 *
-*          Copyright (C) 2010-2015 by T.TAKASU, All rights reserved.
+*          Copyright (C) 2010-2013 by T.TAKASU, All rights reserved.
 *
 * version : $Revision:$ $Date:$
 * history : 2010/07/20  1.1  moved from postpos.c
@@ -15,7 +15,6 @@
 *           2013/03/11  1.3  add pos1-posopt1,2,3,4,5,pos2-syncsol
 *                                misc-rnxopt1,2,pos1-snrmask_r,_b,_L1,_L2,_L5
 *           2014/10/21  1.4  add pos2-bdsarmode
-*           2015/02/20  1.4  add ppp-fixed as pos1-posmode option
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
@@ -33,7 +32,7 @@ static char snrmask_[NFREQ][1024];
 
 /* system options table ------------------------------------------------------*/
 #define SWTOPT  "0:off,1:on"
-#define MODOPT  "0:single,1:dgps,2:kinematic,3:static,4:movingbase,5:fixed,6:ppp-kine,7:ppp-static,8:ppp-fixed"
+#define MODOPT  "0:single,1:dgps,2:kinematic,3:static,4:movingbase,5:fixed,6:ppp-kine,7:ppp-static"
 #define FRQOPT  "1:l1,2:l1+l2,3:l1+l2+l5,4:l1+l2+l5+l6,5:l1+l2+l5+l6+l7"
 #define TYPOPT  "0:forward,1:backward,2:combined"
 #define IONOPT  "0:off,1:brdc,2:sbas,3:dual-freq,4:est-stec,5:ionex-tec,6:qzs-brdc,7:qzs-lex,8:vtec_sf,9:vtec_ef,10:gtec"
@@ -159,7 +158,7 @@ opt_t sysopts[]={
     {"file-tempdir",    2,  (void *)&filopt_.tempdir,    ""     },
     {"file-geexefile",  2,  (void *)&filopt_.geexe,      ""     },
     {"file-solstatfile",2,  (void *)&filopt_.solstat,    ""     },
-    {"file-tracefile",  2,  (void *)&filopt_.trace,      ""     },
+    {"file-tracefile",  2,  (void *)&filopt_.RTKtrace,      ""     },
     
     {"",0,NULL,""} /* terminator */
 };
@@ -216,7 +215,7 @@ extern opt_t *searchopt(const char *name, const opt_t *opts)
 {
     int i;
     
-    trace(3,"searchopt: name=%s\n",name);
+    RTKtrace(3,"searchopt: name=%s\n",name);
     
     for (i=0;*opts[i].name;i++) {
         if (strstr(opts[i].name,name)) return (opt_t *)(opts+i);
@@ -250,7 +249,7 @@ extern int opt2str(const opt_t *opt, char *str)
 {
     char *p=str;
     
-    trace(3,"opt2str : name=%s\n",opt->name);
+    RTKtrace(3,"opt2str : name=%s\n",opt->name);
     
     switch (opt->format) {
         case 0: p+=sprintf(p,"%d"   ,*(int   *)opt->var); break;
@@ -271,7 +270,7 @@ extern int opt2buf(const opt_t *opt, char *buff)
     char *p=buff;
     int n;
     
-    trace(3,"opt2buf : name=%s\n",opt->name);
+    RTKtrace(3,"opt2buf : name=%s\n",opt->name);
     
     p+=sprintf(p,"%-18s =",opt->name);
     p+=opt2str(opt,p);
@@ -295,10 +294,10 @@ extern int loadopts(const char *file, opt_t *opts)
     char buff[2048],*p;
     int n=0;
     
-    trace(3,"loadopts: file=%s\n",file);
+    RTKtrace(3,"loadopts: file=%s\n",file);
     
     if (!(fp=fopen(file,"r"))) {
-        trace(1,"loadopts: options file open error (%s)\n",file);
+        RTKtrace(1,"loadopts: options file open error (%s)\n",file);
         return 0;
     }
     while (fgets(buff,sizeof(buff),fp)) {
@@ -340,10 +339,10 @@ extern int saveopts(const char *file, const char *mode, const char *comment,
     char buff[2048];
     int i;
     
-    trace(3,"saveopts: file=%s mode=%s\n",file,mode);
+    RTKtrace(3,"saveopts: file=%s mode=%s\n",file,mode);
     
     if (!(fp=fopen(file,mode))) {
-        trace(1,"saveopts: options file open error (%s)\n",file);
+        RTKtrace(1,"saveopts: options file open error (%s)\n",file);
         return 0;
     }
     if (comment) fprintf(fp,"# %s\n\n",comment);
@@ -455,7 +454,7 @@ extern void resetsysopts(void)
 {
     int i,j;
     
-    trace(3,"resetsysopts:\n");
+    RTKtrace(3,"resetsysopts:\n");
     
     prcopt_=prcopt_default;
     solopt_=solopt_default;
@@ -466,7 +465,7 @@ extern void resetsysopts(void)
     filopt_.dcb    [0]='\0';
     filopt_.blq    [0]='\0';
     filopt_.solstat[0]='\0';
-    filopt_.trace  [0]='\0';
+    filopt_.RTKtrace  [0]='\0';
     for (i=0;i<2;i++) antpostype_[i]=0;
     elmask_=15.0;
     elmaskar_=0.0;
@@ -486,7 +485,7 @@ extern void resetsysopts(void)
 *-----------------------------------------------------------------------------*/
 extern void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt)
 {
-    trace(3,"getsysopts:\n");
+    RTKtrace(3,"getsysopts:\n");
     
     buff2sysopts();
     if (popt) *popt=prcopt_;
@@ -504,7 +503,7 @@ extern void getsysopts(prcopt_t *popt, solopt_t *sopt, filopt_t *fopt)
 extern void setsysopts(const prcopt_t *prcopt, const solopt_t *solopt,
                        const filopt_t *filopt)
 {
-    trace(3,"setsysopts:\n");
+    RTKtrace(3,"setsysopts:\n");
     
     resetsysopts();
     if (prcopt) prcopt_=*prcopt;

@@ -25,8 +25,6 @@
 *          Systems) Services - version 3, February 1, 2013
 *     [15] RTCM Standard 10403.2, Differential GNSS (Global Navigation Satellite
 *          Systems) Services - version 3, with amendment 1/2, november 7, 2013
-*     [16] Proposal of new RTCM SSR Messages (ssr_1_gal_qzss_sbas_dbs_v05)
-*          2014/04/17
 *
 * version : $Revision:$ $Date:$
 * history : 2009/04/10 1.0  new
@@ -41,7 +39,6 @@
 *           2012/05/14 1.6  separate rtcm2.c, rtcm3.c
 *                           add options to select used codes for msm
 *           2013/04/27 1.7  comply with rtcm 3.2 with amendment 1/2 (ref[15])
-*           2013/12/06 1.8  support SBAS/BeiDou SSR messages (ref[16])
 *-----------------------------------------------------------------------------*/
 #include "rtklib.h"
 
@@ -72,7 +69,7 @@ extern int init_rtcm(rtcm_t *rtcm)
     ssr_t ssr0={{{0}}};
     int i,j;
     
-    trace(3,"init_rtcm:\n");
+    RTKtrace(3,"init_rtcm:\n");
     
     rtcm->staid=rtcm->stah=rtcm->seqno=rtcm->outtype=0;
     rtcm->time=rtcm->time_s=time0;
@@ -127,7 +124,7 @@ extern int init_rtcm(rtcm_t *rtcm)
 *-----------------------------------------------------------------------------*/
 extern void free_rtcm(rtcm_t *rtcm)
 {
-    trace(3,"free_rtcm:\n");
+    RTKtrace(3,"free_rtcm:\n");
     
     /* free memory for observation and ephemeris buffer */
     free(rtcm->obs.data); rtcm->obs.data=NULL; rtcm->obs.n=0;
@@ -153,7 +150,7 @@ extern int input_rtcm2(rtcm_t *rtcm, unsigned char data)
     unsigned char preamb;
     int i;
     
-    trace(5,"input_rtcm2: data=%02x\n",data);
+    RTKtrace(5,"input_rtcm2: data=%02x\n",data);
     
     if ((data&0xC0)!=0x40) return 0; /* ignore if upper 2bit != 01 */
     
@@ -175,7 +172,7 @@ extern int input_rtcm2(rtcm_t *rtcm, unsigned char data)
         
         /* check parity */
         if (!decode_word(rtcm->word,rtcm->buff+rtcm->nbyte)) {
-            trace(2,"rtcm2 partity error: i=%d word=%08x\n",i,rtcm->word);
+            RTKtrace(2,"rtcm2 partity error: i=%d word=%08x\n",i,rtcm->word);
             rtcm->nbyte=0; rtcm->word&=0x3;
             continue;
         }
@@ -212,16 +209,16 @@ extern int input_rtcm2(rtcm_t *rtcm, unsigned char data)
 *          -CLss    : select signal ss for BDS MSM (ss=2I,7I,...)
 *
 *          supported RTCM 3 messages
-*                  (ref [2][3][4][5][6][7][8][9][10][11][12][13][14][15])
+*                  (ref [2][3][4][5][6][7][8][9][10][11][12][13][14])
 *
-*            TYPE       GPS     GLOASS    GALILEO    QZSS     BEIDOU     SBAS
+*            TYPE       GPS     GLOASS    GALILEO    QZSS     COMPASS    SBAS
 *         ----------------------------------------------------------------------
 *          OBS C-L1  : 1001~     1009~       -         -         -         -
 *              F-L1  : 1002      1010        -         -         -         -
 *              C-L12 : 1003~     1011~       -         -         -         -
 *              F-L12 : 1004      1012        -         -         -         -
 *
-*          NAV       : 1019      1020      1045*     1044*     1047*       -
+*          NAV       : 1019      1020      1045*     1044*       -         -
 *                        -         -       1046*       -         -         -
 *
 *          MSM 1     : 1071~     1081~     1091~     1111*~    1121*~    1101*~
@@ -232,12 +229,12 @@ extern int input_rtcm2(rtcm_t *rtcm, unsigned char data)
 *              6     : 1076      1086      1096      1116*     1126*     1106*
 *              7     : 1077      1087      1097      1117*     1127*     1107*
 *
-*          SSR OBT   : 1057      1063      1240*     1246*     1258*       -
-*              CLK   : 1058      1064      1241*     1247*     1259*       -
-*              BIAS  : 1059      1065      1242*     1248*     1260*       -
-*              OBTCLK: 1060      1066      1243*     1249*     1261*       -
-*              URA   : 1061      1067      1244*     1250*     1262*       -
-*              HRCLK : 1062      1068      1245*     1251*     1263*       -
+*          SSR OBT   : 1057      1063      1240*     1246*       -         -
+*              CLK   : 1058      1064      1241*     1247*       -         -
+*              BIAS  : 1059      1065      1242*     1248*       -         -
+*              OBTCLK: 1060      1066      1243*     1249*       -         -
+*              URA   : 1061      1067      1244*     1250*       -         -
+*              HRCLK : 1062      1068      1245*     1251*       -         -
 *
 *          ANT INFO  : 1005 1006 1007 1008 1033
 *         ----------------------------------------------------------------------
@@ -256,7 +253,7 @@ extern int input_rtcm2(rtcm_t *rtcm, unsigned char data)
 *-----------------------------------------------------------------------------*/
 extern int input_rtcm3(rtcm_t *rtcm, unsigned char data)
 {
-    trace(5,"input_rtcm3: data=%02x\n",data);
+    RTKtrace(5,"input_rtcm3: data=%02x\n",data);
     
     /* synchronize frame */
     if (rtcm->nbyte==0) {
@@ -274,7 +271,7 @@ extern int input_rtcm3(rtcm_t *rtcm, unsigned char data)
     
     /* check parity */
     if (crc24q(rtcm->buff,rtcm->len)!=getbitu(rtcm->buff,rtcm->len*8,24)) {
-        trace(2,"rtcm3 parity error: len=%d\n",rtcm->len);
+        RTKtrace(2,"rtcm3 parity error: len=%d\n",rtcm->len);
         return 0;
     }
     /* decode rtcm3 message */
@@ -291,7 +288,7 @@ extern int input_rtcm2f(rtcm_t *rtcm, FILE *fp)
 {
     int i,data=0,ret;
     
-    trace(4,"input_rtcm2f: data=%02x\n",data);
+    RTKtrace(4,"input_rtcm2f: data=%02x\n",data);
     
     for (i=0;i<4096;i++) {
         if ((data=fgetc(fp))==EOF) return -2;
@@ -310,7 +307,7 @@ extern int input_rtcm3f(rtcm_t *rtcm, FILE *fp)
 {
     int i,data=0,ret;
     
-    trace(4,"input_rtcm3f: data=%02x\n",data);
+    RTKtrace(4,"input_rtcm3f: data=%02x\n",data);
     
     for (i=0;i<4096;i++) {
         if ((data=fgetc(fp))==EOF) return -2;
@@ -327,7 +324,7 @@ extern int input_rtcm3f(rtcm_t *rtcm, FILE *fp)
 *-----------------------------------------------------------------------------*/
 extern int gen_rtcm2(rtcm_t *rtcm, int type, int sync)
 {
-    trace(4,"gen_rtcm2: type=%d sync=%d\n",type,sync);
+    RTKtrace(4,"gen_rtcm2: type=%d sync=%d\n",type,sync);
     
     rtcm->nbit=rtcm->len=rtcm->nbyte=0;
     
@@ -347,7 +344,7 @@ extern int gen_rtcm3(rtcm_t *rtcm, int type, int sync)
     unsigned int crc;
     int i=0;
     
-    trace(4,"gen_rtcm3: type=%d sync=%d\n",type,sync);
+    RTKtrace(4,"gen_rtcm3: type=%d sync=%d\n",type,sync);
     
     rtcm->nbit=rtcm->len=rtcm->nbyte=0;
     
@@ -365,7 +362,7 @@ extern int gen_rtcm3(rtcm_t *rtcm, int type, int sync)
     }
     /* message length (header+data) (bytes) */
     if ((rtcm->len=i/8)>=3+1024) {
-        trace(2,"generate rtcm 3 message length error len=%d\n",rtcm->len-3);
+        RTKtrace(2,"generate rtcm 3 message length error len=%d\n",rtcm->len-3);
         rtcm->nbit=rtcm->len=0;
         return 0;
     }

@@ -246,7 +246,7 @@ static int decode_measepoch(raw_t *raw){
     double SB1_WaveLength, SB1_Code = 0.0;
     int SB1_FreqNr;
 
-    trace(4,"SBF decode_measepoch: len=%d\n",raw->len);
+    RTKtrace(4,"SBF decode_measepoch: len=%d\n",raw->len);
 
     /* Get time information */
     tow =U4(p);                                            /*       TOW in ms */
@@ -351,7 +351,7 @@ static int decode_measepoch(raw_t *raw){
             adr=0;
         }
         /* debug
-        trace(1,"signal type = %2d, \n",signType1);
+        RTKtrace(1,"signal type = %2d, \n",signType1);
         */
 
         /* from the signal tiype get the type of RTKLIB signal code*/
@@ -682,10 +682,10 @@ static int decode_gpsnav(raw_t *raw){
     unsigned short prn, sat;
     int week;
 
-    trace(4,"SBF decode_gpsnav: len=%d\n",raw->len);
+    RTKtrace(4,"SBF decode_gpsnav: len=%d\n",raw->len);
 
     if ((raw->len)<120) {
-        trace(2,"SBF decode_gpsnav frame length error: len=%d\n",raw->len);
+        RTKtrace(2,"SBF decode_gpsnav frame length error: len=%d\n",raw->len);
         return -1;
     }
 
@@ -693,7 +693,7 @@ static int decode_gpsnav(raw_t *raw){
     sat = prn;
 
     if (!((prn>=1)&&(prn<=37))){
-        trace(2,"SBF decode_gpsnav prn error: sat=%d\n",prn);
+        RTKtrace(2,"SBF decode_gpsnav prn error: sat=%d\n",prn);
         return -1;
     }
 
@@ -727,7 +727,7 @@ static int decode_gpsnav(raw_t *raw){
     eph.fit    = 0;
 
     if (week>=4096) {
-        trace(2,"SBF gps ephemeris week error: sat=%2d week=%d\n",sat,week);
+        RTKtrace(2,"SBF gps ephemeris week error: sat=%2d week=%d\n",sat,week);
         return -1;
     }
 
@@ -754,10 +754,10 @@ static int decode_galnav(raw_t *raw){
     unsigned short prn, sat;
     int week;
 
-    trace(4,"SBF decode_galnav: len=%d\n",raw->len);
+    RTKtrace(4,"SBF decode_galnav: len=%d\n",raw->len);
 
     if ((raw->len)<152) {
-        trace(2,"SBF decode_galnav frame length error: len=%d\n",raw->len);
+        RTKtrace(2,"SBF decode_galnav frame length error: len=%d\n",raw->len);
         return -1;
     }
 
@@ -765,7 +765,7 @@ static int decode_galnav(raw_t *raw){
     sat = satno(SYS_GAL,prn);
 
     if (!((prn>=1)&&(prn<=36))){
-        trace(2,"SBF decode_galnav prn error: sat=%d\n",prn);
+        RTKtrace(2,"SBF decode_galnav prn error: sat=%d\n",prn);
         return -1;
     }
 
@@ -821,17 +821,17 @@ static int decode_glonav(raw_t *raw){
     unsigned short prn, sat;
     int week;
 
-    trace(4,"SBF decode_glonav: len=%d\n",raw->len);
+    RTKtrace(4,"SBF decode_glonav: len=%d\n",raw->len);
 
     if ((raw->len)<96) {
-        trace(2,"SBF decode_glonav frame length error: len=%d\n",raw->len);
+        RTKtrace(2,"SBF decode_glonav frame length error: len=%d\n",raw->len);
         return -1;
     }
     prn = U1(puiTmp+8)-37;
     sat = satno(SYS_GLO,prn);
 
     if (!((prn>=1)&&(prn<=24))){
-        trace(2,"SBF decode_glonav prn error: sat=%d\n",prn);
+        RTKtrace(2,"SBF decode_glonav prn error: sat=%d\n",prn);
         return -1;
     }
 
@@ -875,17 +875,17 @@ static int decode_sbasnav(raw_t *raw){
     unsigned short prn, sat;
     int week;
 
-    trace(4,"SBF decode_glonav: len=%d\n",raw->len);
+    RTKtrace(4,"SBF decode_glonav: len=%d\n",raw->len);
 
     if ((raw->len)<104) {
-        trace(2,"SBF decode_glonav frame length error: len=%d\n",raw->len);
+        RTKtrace(2,"SBF decode_glonav frame length error: len=%d\n",raw->len);
         return -1;
     }
     prn = U1(puiTmp+8);
     sat = satno(SYS_SBS,prn);
 
     if (!((prn>=120)&&(prn<=140))){
-        trace(2,"SBF decode_sbasnav prn error: sat=%d\n",prn);
+        RTKtrace(2,"SBF decode_sbasnav prn error: sat=%d\n",prn);
         return -1;
     }
 
@@ -907,7 +907,7 @@ static int decode_sbasnav(raw_t *raw){
     eph.af1    = R4(puiTmp +  94);
 
     /* debug
-    trace(1,"sat=%2d, week=%d, tow=%f\n",sat,eph.week,eph.toes);
+    RTKtrace(1,"sat=%2d, week=%d, tow=%f\n",sat,eph.week,eph.toes);
     */
 
 /*  if (!strstr(raw->opt,"-EPHALL")) {
@@ -936,10 +936,10 @@ static int decode_gpsrawcanav(raw_t *raw){
     unsigned char *pt=_buf;
     int i=0,ii=0,id,resp;
 
-    trace(3,"SBF decode_gpsrawcanav: len=%d\n",raw->len);
+    RTKtrace(3,"SBF decode_gpsrawcanav: len=%d\n",raw->len);
 
     if (raw->len<58) {
-        trace(2,"SBF decode_gpsrawcanav block length error: len=%d\n",raw->len);
+        RTKtrace(2,"SBF decode_gpsrawcanav block length error: len=%d\n",raw->len);
         return -1;
     }
 
@@ -971,7 +971,7 @@ static int decode_gpsrawcanav(raw_t *raw){
                        raw->nav.utc_gps,&raw->nav.leaps);
 
      if (resp>5 || resp<=0){
-        /* trace(2,"SBF decode_gpsrawcanav subframe error: sat=%d\n",sat); */
+        /* RTKtrace(2,"SBF decode_gpsrawcanav subframe error: sat=%d\n",sat); */
         /* this function sometimes exists here, maybe not such a big problem. */
          return -1;
      }
@@ -984,7 +984,7 @@ static int decode_gpsrawcanav(raw_t *raw){
          if (eph.iode==raw->nav.eph[sat-1].iode) return 0;
      }
 
-     trace(4,"SBF, decode_gpsrawcanav: sat=%2d\n",sat);
+     RTKtrace(4,"SBF, decode_gpsrawcanav: sat=%2d\n",sat);
      return 2;
 }
 /* decode SBF raw nav message (raw navigation data) --------------------------*/
@@ -996,10 +996,10 @@ static int decode_georaw(raw_t *raw){
     unsigned char *pt=_buf;
     int i=0,ii=0,id,resp;
 
-    trace(3,"SBF decode_georaw: len=%d\n",raw->len);
+    RTKtrace(3,"SBF decode_georaw: len=%d\n",raw->len);
 
     if (raw->len<52) {
-        trace(2,"SBF decode_georaw block length error: len=%d\n",raw->len);
+        RTKtrace(2,"SBF decode_georaw block length error: len=%d\n",raw->len);
         return -1;
     }
 
@@ -1038,18 +1038,18 @@ static int decode_glorawcanav(raw_t *raw){
     sat=satno(SYS_GLO,prn);
 
     if (raw->len<32) {
-        trace(2,"SBF decode_gpsrawcanav block length error: len=%d\n",raw->len);
+        RTKtrace(2,"SBF decode_gpsrawcanav block length error: len=%d\n",raw->len);
         return -1;
     }
 
     /* test hamming of glonass string */
     if (!test_glostr(buff)) {
-        trace(2,"septentrio glo string hamming error: sat=%2d\n",sat);
+        RTKtrace(2,"septentrio glo string hamming error: sat=%2d\n",sat);
         return -1;
     }
     m=getbitu(buff,1,4);
     if (m<1||15<m) {
-        trace(2,"septentrio glo string no error: sat=%2d\n",sat);
+        RTKtrace(2,"septentrio glo string no error: sat=%2d\n",sat);
         return -1;
     }
 
@@ -1075,7 +1075,7 @@ static int decode_glorawcanav(raw_t *raw){
 static int decode_gpsion(raw_t *raw){
     unsigned char prn, *p=(raw->buff)+8;            /* points at TOW location */
 
-    trace(4,"SBF decode_gpsion: len=%d\n", raw->len);
+    RTKtrace(4,"SBF decode_gpsion: len=%d\n", raw->len);
     prn = U1(p + 6);
     raw->nav.ion_gps[0] = R4(p + 8);
     raw->nav.ion_gps[1] = R4(p + 12);
@@ -1092,7 +1092,7 @@ static int decode_gpsion(raw_t *raw){
 static int decode_galion(raw_t *raw){
     unsigned char prn, *p=(raw->buff)+6;            /* points at TOW location */
 
-    trace(4,"SBF decode_galion: len=%d\n", raw->len);
+    RTKtrace(4,"SBF decode_galion: len=%d\n", raw->len);
     prn = U1(p + 8);
     raw->nav.ion_gal[0] = R4(p + 10);
     raw->nav.ion_gal[1] = R4(p + 14);
@@ -1107,7 +1107,7 @@ static int decode_gpsutc(raw_t *raw)
 {
     unsigned char *p=(raw->buff)+8;                 /* points at TOW location */
 
-    trace(4,"SBF decode_gpsutc: len=%d\n", raw->len);
+    RTKtrace(4,"SBF decode_gpsutc: len=%d\n", raw->len);
 
     /* GPS delta-UTC parameters */
     raw->nav.utc_gps[1] = R4(p + 8);                                  /*   A1 */
@@ -1129,7 +1129,7 @@ static int decode_gpsalm(raw_t *raw)
     unsigned char *p=(raw->buff)+8;                 /* points at TOW location */
     alm_t alm;
 
-    trace(4,"SBF decode_gpsalm: len=%d\n", raw->len);
+    RTKtrace(4,"SBF decode_gpsalm: len=%d\n", raw->len);
 
     alm.sat =   satno(SYS_GPS,U1(p + 6));
     alm.e     = R4(p + 8);
@@ -1156,7 +1156,7 @@ static int decode_galutc(raw_t *raw)
 {
     unsigned char *p=(raw->buff)+8;                 /* points at TOW location */
 
-    trace(4,"SBF decode_galutc: len=%d\n", raw->len);
+    RTKtrace(4,"SBF decode_galutc: len=%d\n", raw->len);
 
     /* GPS delta-UTC parameters */
     raw->nav.utc_gal[1] = R4(p + 8);                                  /*   A1 */
@@ -1177,7 +1177,7 @@ static int decode_galalm(raw_t *raw)
     unsigned char *p=(raw->buff)+8;                 /* points at TOW location */
     alm_t alm;
 
-    trace(4,"SBF decode_galalm: len=%d\n", raw->len);
+    RTKtrace(4,"SBF decode_galalm: len=%d\n", raw->len);
 
     alm.sat =   satno(SYS_GAL,U1(p + 49));
     alm.e     = R4(p + 8);
@@ -1209,14 +1209,14 @@ static int decode_sbf(raw_t *raw)
     int type = U2(raw->buff+4) & 0x1fff << 0;
     int revision = U2(raw->buff+4) >> 13;
 
-    trace(3,"decode_sbf: type=%04x len=%d\n",type,raw->len);
+    RTKtrace(3,"decode_sbf: type=%04x len=%d\n",type,raw->len);
 
     /* read the SBF block CRC */
     crc = U2(raw->buff+2);
 
     /* checksum skipping first 4 bytes */
     if (checksum(raw->buff+4, raw->len-4) !=  crc){
-        trace(2,"sbf checksum error: type=%04x len=%d\n",type, raw->len);
+        RTKtrace(2,"sbf checksum error: type=%04x len=%d\n",type, raw->len);
         return -1;
     }
 
@@ -1263,7 +1263,7 @@ static int decode_sbf(raw_t *raw)
         case ID_COMMENT:        return decode_comment(raw);
 #endif
         default:
-            trace(3,"decode_sbf: unused frame type=%04x len=%d\n",type,raw->len);
+            RTKtrace(3,"decode_sbf: unused frame type=%04x len=%d\n",type,raw->len);
         /* there are many more SBF blocks to be extracted */
     }
     return 0;
@@ -1285,7 +1285,7 @@ static int sync_sbf(unsigned char *buff, unsigned char data)
 *-----------------------------------------------------------------------------*/
 extern int input_sbf(raw_t *raw, unsigned char data)
 {
-    trace(5,"input_sbf: data=%02x\n",data);
+    RTKtrace(5,"input_sbf: data=%02x\n",data);
 
     if (raw->nbyte==0) {
         if (sync_sbf(raw->buff,data)) raw->nbyte=2;
@@ -1296,7 +1296,7 @@ extern int input_sbf(raw_t *raw, unsigned char data)
     if (raw->nbyte<8) return 0;
 
     if ((raw->len=U2(raw->buff+6))>MAXRAWLEN) {
-        trace(2,"sbf length error: len=%d\n",raw->len);
+        RTKtrace(2,"sbf length error: len=%d\n",raw->len);
         raw->nbyte=0;
         return -1;
     }
@@ -1315,7 +1315,7 @@ extern int input_sbff(raw_t *raw, FILE *fp)
 {
     int i,data;
 
-    trace(4,"input_sbff:\n");
+    RTKtrace(4,"input_sbff:\n");
 
     /* go to the beginning of the first block */
     if (raw->nbyte==0) {
@@ -1333,7 +1333,7 @@ extern int input_sbff(raw_t *raw, FILE *fp)
 
     /* decode le length of the block and store it in len*/
     if ((raw->len=U2(raw->buff+6))>MAXRAWLEN) {
-        trace(2,"sbf length error: len=%d\n",raw->len);
+        RTKtrace(2,"sbf length error: len=%d\n",raw->len);
         raw->nbyte=0;
         return -1;
     }

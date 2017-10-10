@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------------------
 * rtklib.h : rtklib constants, types and function prototypes
 *
-*          Copyright (C) 2007-2015 by T.TAKASU, All rights reserved.
+*          Copyright (C) 2007-2014 by T.TAKASU, All rights reserved.
 *
 * options : -DENAGLO   enable GLONASS
 *           -DENAGAL   enable Galileo
@@ -24,6 +24,7 @@
 *           2010/07/29 1.8  rtklib ver.2.4.0
 *           2011/05/27 1.9  rtklib ver.2.4.1
 *           2013/03/28 1.10 rtklib ver.2.4.2
+*           2014/10/24 1.11 rtklib ver.2.4.3 beta
 *-----------------------------------------------------------------------------*/
 #ifndef RTKLIB_H
 #define RTKLIB_H
@@ -46,12 +47,12 @@ extern "C" {
 
 /* constants -----------------------------------------------------------------*/
 
-#define VER_RTKLIB  "2.4.2"             /* library version */
+#define VER_RTKLIB  "2.4.3"             /* library version */
 
-#define PATCH_LEVEL "p11"               /* patch level */
+#define PATCH_LEVEL "b5"                /* patch level */
 
 #define COPYRIGHT_RTKLIB \
-            "Copyright (C) 2007-2015 by T.Takasu\nAll rights reserved."
+            "Copyright (C) 2007-2014 by T.Takasu\nAll rights reserved."
 
 #define PI          3.1415926535897932  /* pi */
 #define D2R         (PI/180.0)          /* deg to rad */
@@ -196,19 +197,20 @@ extern "C" {
 #define MAXRCV      64                  /* max receiver number (1 to MAXRCV) */
 #define MAXOBSTYPE  64                  /* max number of obs type in RINEX */
 #define DTTOL       0.005               /* tolerance of time difference (s) */
-#define MAXDTOE     7200.0              /* max time difference to GPS Toe (s) */
-#define MAXDTOE_QZS 7200.0              /* max time difference to QZSS Toe (s) */
-#define MAXDTOE_GAL 10800.0             /* max time difference to Galileo Toe (s) */
-#define MAXDTOE_CMP 21600.0             /* max time difference to BeiDou Toe (s) */
+#if 0
+#define MAXDTOE     10800.0             /* max time difference to ephem Toe (s) for GPS */
+#else
+#define MAXDTOE     7200.0              /* max time difference to ephem Toe (s) for GPS */
+#endif
 #define MAXDTOE_GLO 1800.0              /* max time difference to GLONASS Toe (s) */
 #define MAXDTOE_SBS 360.0               /* max time difference to SBAS Toe (s) */
 #define MAXDTOE_S   86400.0             /* max time difference to ephem toe (s) for other */
 #define MAXGDOP     300.0               /* max GDOP */
 
-#define INT_SWAP_TRAC 86400.0           /* swap interval of trace file (s) */
+#define INT_SWAP_TRAC 86400.0           /* swap interval of RTKtrace file (s) */
 #define INT_SWAP_STAT 86400.0           /* swap interval of solution status file (s) */
 
-#define MAXEXFILE   1024                /* max number of expanded files */
+#define MAXEXFILE   100                 /* max number of expanded files */
 #define MAXSBSAGEF  30.0                /* max age of SBAS fast correction (s) */
 #define MAXSBSAGEL  1800.0              /* max age of SBAS long term corr (s) */
 #define MAXSBSURA   8                   /* max URA of SBAS satellite */
@@ -227,7 +229,6 @@ extern "C" {
 #define MAXSOLBUF   256                 /* max number of solution buffer */
 #define MAXOBSBUF   128                 /* max number of observation data buffer */
 #define MAXNRPOS    16                  /* max number of reference positions */
-#define MAXLEAPS    64                  /* max number of leap seconds table */
 
 #define RNX2VER     2.10                /* RINEX ver.2 default output version */
 #define RNX3VER     3.00                /* RINEX ver.3 default output version */
@@ -545,7 +546,6 @@ typedef struct {        /* GPS/QZS/GAL broadcast ephemeris type */
                         /* GPS/QZS:tgd[0]=TGD */
                         /* GAL    :tgd[0]=BGD E5a/E1,tgd[1]=BGD E5b/E1 */
                         /* CMP    :tgd[0]=BGD1,tgd[1]=BGD2 */
-    double Adot,ndot;   /* Adot,ndot for CNAV */
 } eph_t;
 
 typedef struct {        /* GLONASS broadcast ephemeris type */
@@ -732,7 +732,6 @@ typedef struct {        /* SSR correction type */
     double udi[5];      /* SSR update interval (s) */
     int iod[5];         /* iod ssr {eph,clk,hrclk,ura,bias} */
     int iode;           /* issue of data */
-    int iodcrc;         /* issue of data crc for beidou/sbas */
     int ura;            /* URA indicator */
     int refd;           /* sat ref datum (0:ITRF,1:regional) */
     double deph [3];    /* delta orbit {radial,along,cross} (m) */
@@ -975,7 +974,7 @@ typedef struct {        /* processing options type */
     int tropopt;        /* troposphere option (TROPOPT_???) */
     int dynamics;       /* dynamics model (0:none,1:velociy,2:accel) */
     int tidecorr;       /* earth tide correction (0:off,1:solid,2:solid+otl+pole) */
-    int niter;          /* number of filter iteration */
+    int niter;          /* number of RTKfilter iteration */
     int codesmooth;     /* code smoothing window size (0:none) */
     int intpref;        /* interpolate reference obs (for post mission) */
     int sbascorr;       /* SBAS correction options */
@@ -1026,7 +1025,7 @@ typedef struct {        /* solution options type */
     int geoid;          /* geoid model (0:EGM96,1:JGD2000) */
     int solstatic;      /* solution of static mode (0:all,1:single) */
     int sstat;          /* solution statistics level (0:off,1:states,2:residuals) */
-    int trace;          /* debug trace level (0:off,1-5:debug) */
+    int RTKtrace;          /* debug RTKtrace level (0:off,1-5:debug) */
     double nmeaintv[2]; /* nmea output interval (s) (<0:no,0:all) */
                         /* nmeaintv[0]:gprmc,gpgga,nmeaintv[1]:gpgsv */
     char sep[64];       /* field separator */
@@ -1045,7 +1044,7 @@ typedef struct {        /* file options type */
     char tempdir[MAXSTRPATH]; /* ftp/http temporaly directory */
     char geexe  [MAXSTRPATH]; /* google earth exec file */
     char solstat[MAXSTRPATH]; /* solution statistics file */
-    char trace  [MAXSTRPATH]; /* debug trace file */
+    char RTKtrace  [MAXSTRPATH]; /* debug RTKtrace file */
 } filopt_t;
 
 typedef struct {        /* RINEX options type */
@@ -1243,6 +1242,15 @@ typedef struct {        /* RTK server type */
     int prcout;         /* missing observation data count */
     lock_t lock;        /* lock flag */
 } rtksvr_t;
+/*added by Yanqing Hou 2017-07-25*/
+typedef struct {        /* parameters */
+	double mu1;         /* mu1 */
+    double mu2;
+	double K1[3*(MAXSAT*3)];
+    double K2[3*(MAXSAT*3)];
+    double Qbp1[3*3];/*vc-matrix of bchk if sub1 is fixed*/
+    double Qbp2[3*3];/*vc-matrix of bchk if sub2 is fixed*/
+} paras_t;
 
 /* global variables ----------------------------------------------------------*/
 extern const double chisqr[];           /* chi-sqr(n) table (alpha=0.001) */
@@ -1284,7 +1292,7 @@ extern int  solve (const char *tr, const double *A, const double *Y, int n,
                    int m, double *X);
 extern int  lsq   (const double *A, const double *y, int n, int m, double *x,
                    double *Q);
-extern int  filter(double *x, double *P, const double *H, const double *v,
+extern int  RTKfilter(double *x, double *P, const double *H, const double *v,
                    const double *R, int n, int m);
 extern int  smoother(const double *xf, const double *Qf, const double *xb,
                      const double *Qb, int n, double *xs, double *Qs);
@@ -1315,7 +1323,6 @@ extern gtime_t timeget  (void);
 extern void    timeset  (gtime_t t);
 extern double  time2doy (gtime_t t);
 extern double  utc2gmst (gtime_t t, double ut1_utc);
-extern int read_leaps(const char *file);
 
 extern int adjgpsweek(int week);
 extern unsigned int tickget(void);
@@ -1351,11 +1358,11 @@ extern int  readblq(const char *file, const char *sta, double *odisp);
 extern int  readerp(const char *file, erp_t *erp);
 extern int  geterp (const erp_t *erp, gtime_t time, double *val);
 
-/* debug trace functions -----------------------------------------------------*/
+/* debug RTKtrace functions -----------------------------------------------------*/
 extern void traceopen(const char *file);
 extern void traceclose(void);
 extern void tracelevel(int level);
-extern void trace    (int level, const char *format, ...);
+extern void RTKtrace    (int level, const char *format, ...);
 extern void tracet   (int level, const char *format, ...);
 extern void tracemat (int level, const double *A, int n, int m, int p, int q);
 extern void traceobs (int level, const obsd_t *obs, int n);
@@ -1635,8 +1642,10 @@ extern void strsetproxy(const char *addr);
 
 /* integer ambiguity resolution ----------------------------------------------*/
 extern int lambda(int n, int m, const double *a, const double *Q, double *F,
-                  double *s);
-
+                  double *s, double *mu, double Pf);
+/*TSRC PAR strategy-----------------------------------------------------------*/
+extern int TSRC(int na, int m, const double *a, const double *Qbb, const double *Qba, const double *Qaa,
+		double *F, double *s, double *bchk, double *Qbchk, double Pf);
 /* standard positioning ------------------------------------------------------*/
 extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
                   const prcopt_t *opt, sol_t *sol, double *azel,
