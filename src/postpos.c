@@ -188,6 +188,7 @@ static int inputobs(obsd_t *obs, int solq, const prcopt_t *popt)
     gtime_t time={0};
     char path[1024];
     int i,nu,nr,n=0;
+    double tt=0;
     
     RTKtrace(3,"infunc  : revs=%d iobsu=%d iobsr=%d isbs=%d\n",revs,iobsu,iobsr,isbs);
     
@@ -200,12 +201,18 @@ static int inputobs(obsd_t *obs, int solq, const prcopt_t *popt)
     if (!revs) { /* input forward data */
         if ((nu=nextobsf(&obss,&iobsu,1))<=0) return -1;
         if (popt->intpref) {
-            for (;(nr=nextobsf(&obss,&iobsr,2))>0;iobsr+=nr)
+            for (;(nr=nextobsf(&obss,&iobsr,2))>0;iobsr+=nr){
+                tt=timediff(obss.data[iobsr].time,obss.data[iobsu].time);
                 if (timediff(obss.data[iobsr].time,obss.data[iobsu].time)>-DTTOL) break;
+                
+            }
         }
         else {
-            for (i=iobsr;(nr=nextobsf(&obss,&i,2))>0;iobsr=i,i+=nr)
+            for (i=iobsr;(nr=nextobsf(&obss,&i,2))>0;iobsr=i,i+=nr){
+                   tt=timediff(obss.data[i].time,obss.data[iobsu].time);
                 if (timediff(obss.data[i].time,obss.data[iobsu].time)>DTTOL) break;
+                
+            }
         }
         nr=nextobsf(&obss,&iobsr,2);
         for (i=0;i<nu&&n<MAXOBS*2;i++) obs[n++]=obss.data[iobsu+i];

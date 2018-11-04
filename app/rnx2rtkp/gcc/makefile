@@ -22,12 +22,12 @@ LDLIBS  = -lm -lrt
 #LDLIBS  = -L$(MKLDIR)/lib/intel64 -lm -lrt -lmkl_core -lmkl_intel_lp64 -lmkl_gnu_thread -liomp5 -lpthread
 
 all        : rnx2rtkp
-rnx2rtkp   : rnx2rtkp.o rtkcmn.o rinex.o rtkpos.o postpos.o solution.o
+rnx2rtkp   : main.o rtkcmn.o rinex.o rtkpos.o postpos.o solution.o
 rnx2rtkp   : lambda.o geoid.o sbas.o preceph.o pntpos.o ephemeris.o options.o
 rnx2rtkp   : ppp.o ppp_ar.o rtcm.o rtcm2.o rtcm3.o rtcm3e.o ionex.o qzslex.o
 
-rnx2rtkp.o : ../rnx2rtkp.c
-	$(CC) -c $(CFLAGS) ../rnx2rtkp.c
+main.o : ../RTKLIB243/RTKLIB243/main.c
+	$(CC) -c $(CFLAGS) ../RTKLIB243/RTKLIB243/main.c
 rtkcmn.o   : $(SRC)/rtkcmn.c
 	$(CC) -c $(CFLAGS) $(SRC)/rtkcmn.c
 rinex.o    : $(SRC)/rinex.c

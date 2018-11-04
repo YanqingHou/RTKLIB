@@ -103,7 +103,8 @@
 *           2014/10/21 1.29 strtok() -> strtok_r() in expath() for thread-safe
 *                           add bdsmodear in procopt_default
 *-----------------------------------------------------------------------------*/
-#define _POSIX_C_SOURCE 199309
+//#define _POSIX_C_SOURCE 199309
+#define _POSIX_C_SOURCE 199506 //for mac clang
 #include <stdarg.h>
 #include <ctype.h>
 #ifndef WIN32
@@ -1059,17 +1060,21 @@ static int filter_(const double *x, const double *P, const double *H,
     
     matcpy(Q,R,m,m);
 	matcpy(xp,x,n,1);
-			RTKtrace(1,"xp=");tracemat(1,xp,n,1,13,4);
-	        RTKtrace(1,"Px=");tracemat(1,P,n,n,13,4);
-			RTKtrace(1,"R=");tracemat(1,R,m,m,13,4);
+//            RTKtrace(1,"libxk=");tracemat(1,xp,n,1,13,6);
+//            RTKtrace(1,"libPxk=");tracemat(1,P,n,n,13,6);
+//            RTKtrace(1,"libR=");tracemat(1,R,m,m,13,6);
 	matmul("NN",n,m,n,1.0,P,H,0.0,F);       /* Q=H'*P*H+R */
 	matmul("TN",m,m,n,1.0,H,F,1.0,Q);
-             RTKtrace(1,"Q=HPH+R=");tracemat(1,R,m,m,13,4);
+//             RTKtrace(1,"libQ=");tracemat(1,Q,m,m,13,6);
     if (!(info=matinv(Q,m))) {
         matmul("NN",n,m,m,1.0,F,Q,0.0,K);   /* K=P*H*Q^-1 */
+//        RTKtrace(1,"libK=");tracemat(1,K,n,m,13,6);
         matmul("NN",n,1,m,1.0,K,v,1.0,xp);  /* xp=x+K*v */
+//        RTKtrace(1,"libxk1=");tracemat(1,xp,1,m,13,6);
+
         matmul("NT",n,n,m,-1.0,K,H,1.0,I);  /* Pp=(I-K*H')*P */
         matmul("NN",n,n,n,1.0,I,P,0.0,Pp);
+//        RTKtrace(1,"libPxk1=");tracemat(1,Pp,n,n,13,6);
     }
     free(F); free(Q); free(K); free(I);
     return info;
@@ -1087,8 +1092,8 @@ extern int RTKfilter(double *x, double *P, const double *H, const double *v,
         for (j=0;j<k;j++) P_[i+j*k]=P[ix[i]+ix[j]*n];
 		for (j=0;j<m;j++) H_[i+j*k]=H[ix[i]+j*n];
 	}
-	RTKtrace(1,"Hfilter="); tracemat(1,H_,m,k,13,4);
-		RTKtrace(1,"yfilter="); tracemat(1,v,m,1,13,4);
+//    RTKtrace(1,"Hfilter="); tracemat(1,H_,k,m,13,6);
+//    RTKtrace(1,"yfilter="); tracemat(1,v,m,1,13,6);
 	info=filter_(x_,P_,H_,v,R,k,m,xp_,Pp_);
     for (i=0;i<k;i++) {
         x[ix[i]]=xp_[i];
@@ -1144,11 +1149,12 @@ extern int smoother(const double *xf, const double *Qf, const double *xb,
 extern void matfprint(const double A[], int n, int m, int p, int q, FILE *fp)
 {
     int i,j;
-    
+//    fprintf(fp,"[");
     for (i=0;i<n;i++) {
         for (j=0;j<m;j++) fprintf(fp," %*.*f",p,q,A[i+j*n]);
         fprintf(fp,"\n");
     }
+//    fprintf(fp,"];\n");
 }
 extern void matprint(const double A[], int n, int m, int p, int q)
 {
@@ -2719,12 +2725,12 @@ extern void RTKtrace(int level, const char *format, ...)
     va_list ap;
     
     /* print error message to stderr */
-    if (level<=1) {
+    if (level<1) {/*it was level<=1, Yanqing Hou changed it to level<1, aiming to avoid the output to terminal when processing*/
         va_start(ap,format); vfprintf(stderr,format,ap); va_end(ap);
     }
     if (!fp_trace||level>level_trace) return;
     traceswap();
-    fprintf(fp_trace,"%d ",level);
+   // fprintf(fp_trace,"%d ",level);//Yanqing revised. remove the level sign
     va_start(ap,format); vfprintf(fp_trace,format,ap); va_end(ap);
     fflush(fp_trace);
 }

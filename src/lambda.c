@@ -735,14 +735,25 @@ extern int lambda(int n, int m, const double *a, const double *Q, double *F,
     double ps=0;
     if (n<=0||m<=0) return -1;
     L=zeros(n,n); D=mat(n,1); Z=eye(n); z=mat(n,1),E=mat(n,m);
-    
+//    RTKtrace(1,"ahat=");tracemat(1,a,1,n,10,6);
+//    RTKtrace(1,"Qa=");tracemat(1,Q,n,n,10,6);
     /* LD factorization */
 	if (!(info=LD(n,Q,L,D))) {
+//        RTKtrace(1,"L=");tracemat(1,L,n,n,10,6);
+//        RTKtrace(1,"D=");tracemat(1,D,1,n,10,6);
+
 
 	          /* lambda reduction */
         reduction(n,L,D,Z);
+        
+//        RTKtrace(1,"Z=");tracemat(1,Z,n,n,10,6);
+//        RTKtrace(1,"Lz=");tracemat(1,L,n,n,10,6);
+//        RTKtrace(1,"Dz=");tracemat(1,D,1,n,10,6);
+        
 		ps=successrate(0,n,D);
         matmul("TN",n,1,n,1.0,Z,a,0.0,z); /* z=Z'*a */
+//        RTKtrace(1,"zhat=");tracemat(1,z,1,n,10,6);
+
 		mu[0]=ps<1?1/invratio(Pf,1-ps,n):0;
 		mu[1]=1/cpmufit(Pf,1-ps,n);
         /* mlambda search */

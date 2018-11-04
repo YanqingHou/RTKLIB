@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8B154F4A209F46490009DE9D /* libcblas.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 8B154F49209F46490009DE9D /* libcblas.tbd */; };
+		8B154F4C209F467F0009DE9D /* libclapack.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 8B154F4B209F467F0009DE9D /* libclapack.tbd */; };
 		8BC153161F8BF17500FBE432 /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = 8BC153151F8BF17500FBE432 /* main.c */; };
 		8BC1533A1F8BF1F800FBE432 /* download.c in Sources */ = {isa = PBXBuildFile; fileRef = 8BC1531C1F8BF1F600FBE432 /* download.c */; };
 		8BC1533B1F8BF1F800FBE432 /* datum.c in Sources */ = {isa = PBXBuildFile; fileRef = 8BC1531D1F8BF1F600FBE432 /* datum.c */; };
@@ -64,6 +66,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8B154F47209F461C0009DE9D /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		8B154F49209F46490009DE9D /* libcblas.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcblas.tbd; path = usr/lib/libcblas.tbd; sourceTree = SDKROOT; };
+		8B154F4B209F467F0009DE9D /* libclapack.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libclapack.tbd; path = usr/lib/libclapack.tbd; sourceTree = SDKROOT; };
+		8B154F4D209F469F0009DE9D /* libf77lapack.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libf77lapack.tbd; path = usr/lib/libf77lapack.tbd; sourceTree = SDKROOT; };
 		8BC153121F8BF17500FBE432 /* RTKLIB243 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = RTKLIB243; sourceTree = BUILT_PRODUCTS_DIR; };
 		8BC153151F8BF17500FBE432 /* main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
 		8BC1531C1F8BF1F600FBE432 /* download.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = download.c; path = ../../../../src/download.c; sourceTree = "<group>"; };
@@ -118,6 +124,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8B154F4C209F467F0009DE9D /* libclapack.tbd in Frameworks */,
+				8B154F4A209F46490009DE9D /* libcblas.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -194,6 +202,10 @@
 		8BC153571F8BF88600FBE432 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				8B154F4D209F469F0009DE9D /* libf77lapack.tbd */,
+				8B154F4B209F467F0009DE9D /* libclapack.tbd */,
+				8B154F49209F46490009DE9D /* libcblas.tbd */,
+				8B154F47209F461C0009DE9D /* Accelerate.framework */,
 				8BC1535C1F8C93E500FBE432 /* libmathCommon.tbd */,
 				8BC1535A1F8C93D600FBE432 /* libmathCommon.A.tbd */,
 				8BC153581F8BF88700FBE432 /* libm.tbd */,
@@ -358,7 +370,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -407,7 +419,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
 				GCC_WARN_UNDECLARED_SELECTOR = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_FUNCTION = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;

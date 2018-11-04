@@ -165,6 +165,7 @@ int main(int argc, char **argv)
     ret=postpos(ts,te,tint,0.0,&prcopt,&solopt,&filopt,infile,n,outfile,"","");
     
     if (!ret) fprintf(stderr,"%40s\r","");
+    else fprintf(stdout,"done!\r");
     return ret;
 }
 
