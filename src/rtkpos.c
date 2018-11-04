@@ -2779,7 +2779,7 @@ else if (stat != SOLQ_NONE && resamb_LAMBDA(rtk, bias, xa) > 1) {
             }
 		}
 	}
-	/* save solution status */
+	/* save solution status*/
 	if (stat == SOLQ_FIX) {
 		for (i = 0; i < 3; i++) {
 			rtk->sol.rr[i] = rtk->xa[i];
