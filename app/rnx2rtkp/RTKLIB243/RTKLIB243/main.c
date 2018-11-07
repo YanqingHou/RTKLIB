@@ -113,7 +113,7 @@ int main(int argc, char **argv)
             getsysopts(&prcopt,&solopt,&filopt);
         }
     }
-    for (i=1,n=0;i<argc;i++) {
+       for (i=1,n=0;i<argc;i++) {
         if      (!strcmp(argv[i],"-o")&&i+1<argc) outfile=argv[++i];
         else if (!strcmp(argv[i],"-ts")&&i+2<argc) {
             sscanf(argv[++i],"%lf/%lf/%lf",es,es+1,es+2);

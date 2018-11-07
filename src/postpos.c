@@ -189,11 +189,14 @@ static int inputobs(obsd_t *obs, int solq, const prcopt_t *popt)
     char path[1024];
     int i,nu,nr,n=0;
     double tt=0;
-    
+    char *utcstr;
+    static cnt=0;
     RTKtrace(3,"infunc  : revs=%d iobsu=%d iobsr=%d isbs=%d\n",revs,iobsu,iobsr,isbs);
     
     if (0<=iobsu&&iobsu<obss.n) {
         settime((time=obss.data[iobsu].time));
+        utcstr=time_str(time,0);//added by yanqing hou, for debug
+        cnt++;
         if (checkbrk("processing : %s Q=%d",time_str(time,0),solq)) {
             aborts=1; showmsg("aborted"); return -1;
         }
