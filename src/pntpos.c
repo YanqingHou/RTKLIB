@@ -283,15 +283,16 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         
         /* design matrix */
         for (j=0;j<NX;j++) H[j+nv*NX]=j<3?-e[j]:(j==3?1.0:0.0);
-        
+        RTKtrace(1, "Hbfe");tracemat(1, H, 7, 21, 12, 6);//7行12列
         /* time system and receiver bias offset correction */
         if      (sys==SYS_GLO) {v[nv]-=x[4]; H[4+nv*NX]=1.0; mask[1]=1;}
         else if (sys==SYS_GAL) {v[nv]-=x[5]; H[5+nv*NX]=1.0; mask[2]=1;}
         else if (sys==SYS_CMP) {v[nv]-=x[6]; H[6+nv*NX]=1.0; mask[3]=1;}
-        else mask[0]=1;
+        else mask[0]=1; /*GPS是默认*/
         
         vsat[i]=1; resp[i]=v[nv]; (*ns)++;
-        
+        RTKtrace(1, "Haft");tracemat(1, H, 7, 21, 12, 6);//7行12列
+
         /* error variance */
 		/*var[nv++]=varerr(opt,azel[1+i*2],sys)+vare[i]+vmeas+vion+vtrp; */
 		var[nv++]=varerrYQ(opt,azel[1+i*2],sys)+vare[i]+vmeas+vion+vtrp;
@@ -299,13 +300,16 @@ static int rescode(int iter, const obsd_t *obs, int n, const double *rs,
         RTKtrace(4,"sat=%2d azel=%5.1f %4.1f res=%7.3f sig=%5.3f\n",obs[i].sat,
               azel[i*2]*R2D,azel[1+i*2]*R2D,resp[i],sqrt(var[nv-1]));
     }
-    /* constraint to avoid rank-deficient */
+    /* constraint to avoid rank-deficient 增加伪观测方程，以补足因增加系统间偏差未知数带来的秩亏*/
     for (i=0;i<4;i++) {
         if (mask[i]) continue;
         v[nv]=0.0;
         for (j=0;j<NX;j++) H[j+nv*NX]=j==i+3?1.0:0.0;
         var[nv++]=0.01;
     }
+    RTKtrace(1, "Hfin");tracemat(1, H, 7, 24, 12, 6);//7行12列
+    RTKtrace(1, "vfin");tracemat(1, v, 1, nv, 12, 6);//7行12列
+
     return nv;
 }
 /* validate solution ---------------------------------------------------------*/
@@ -338,6 +342,11 @@ static int valsol(const double *azel, const int *vsat, int n,
     }
     return 1;
 }
+int weightedlsq(double *y, double *H, double *Q, double *x)
+{
+//    matmul('', <#int n#>, <#int k#>, <#int m#>, <#double alpha#>, <#const double *A#>, <#const double *B#>, <#double beta#>, <#double *C#>)
+    return 1;
+}
 /* estimate receiver position ------------------------------------------------*/
 static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
                   const double *vare, const int *svh, const nav_t *nav,
@@ -358,7 +367,7 @@ static int estpos(const obsd_t *obs, int n, const double *rs, const double *dts,
         /* pseudorange residuals */
         nv=rescode(i,obs,n,rs,dts,vare,svh,nav,x,opt,v,H,var,azel,vsat,resp,
                    &ns);
-        
+        RTKtrace(1, "dts "); tracemat(1, dts, 2, ns, 12, 10);
         if (nv<NX) {
             sprintf(msg,"lack of valid sats ns=%d",nv);
             break;
@@ -596,7 +605,7 @@ extern int pntpos(const obsd_t *obs, int n, const nav_t *nav,
     }
     /* satellite positons, velocities and clocks */
     satposs(sol->time,obs,n,nav,opt_.sateph,rs,dts,var,svh);
-    
+    RTKtrace(1, "basrs="); tracemat(1, rs, 6, 12, 13, 7);
     /* estimate receiver position with pseudorange */
     stat=estpos(obs,n,rs,dts,var,svh,nav,&opt_,sol,azel_,vsat,resp,msg);
     
