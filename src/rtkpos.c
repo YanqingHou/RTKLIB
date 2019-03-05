@@ -2583,7 +2583,8 @@ static int valpos(rtk_t *rtk, const double *v, const double *R, const int *vflg,
 	return stat;
 }
 
-/* relative positioning ------------------------------------------------------ */
+/* relative positioning ------------------------------------------------------
+   using IFLC combination to eliminate ionospheric delay*/
 static int relpos(rtk_t *rtk, const obsd_t *obs, int nu, int nr,
 	const nav_t *nav) {
     //TODO:relpos
