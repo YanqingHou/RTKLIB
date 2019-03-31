@@ -907,7 +907,7 @@ static int execses(gtime_t ts, gtime_t te, double ti, const prcopt_t *popt,
                stas);
     }
     /* read ocean tide loading parameters */
-    if (popt_.mode>PMODE_SINGLE&&fopt->blq) {
+    if (popt_.mode>PMODE_SINGLE && fopt->blq) {
         readotl(&popt_,fopt->blq,stas);
     }
     /* rover/reference fixed position */

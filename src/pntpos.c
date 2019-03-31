@@ -55,7 +55,7 @@ static double varerrYQ(const prcopt_t *opt, double el, int sys)
 			varr=0.0587+0.6125*exp(-R2D*el/15);
 		}
 		else{
-		;
+		varr=0.0232+0.4817*exp(-R2D*el/15);;
 		}
 		if (opt->ionoopt==IONOOPT_IFLC) varr*=SQR(3.0); /* iono-free */
 	}
@@ -66,7 +66,7 @@ static double varerrYQ(const prcopt_t *opt, double el, int sys)
 			varr=0.0330+0.0487/sin(el);
 		}
 		else {
-		;
+		varr=0.0130+0.0355/sin(el);;
 		}
 		if (opt->ionoopt==IONOOPT_IFLC) varr*=SQR(3.0); /* iono-free */
 	}
